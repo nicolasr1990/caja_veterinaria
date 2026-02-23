@@ -465,6 +465,7 @@
 // ====== CONFIG ======
 const MI_NUMERO = '5491100000000'; // ← TU NÚMERO
 const SHEET_URL = 'https://script.google.com/macros/s/AKfycbxPn9ZdpBpqIWVtTve-zhtyfX2pr11qx5oSwYP4iTQsSncDGRqPUznGSJLd_-o201g/exec';
+const POLL_INTERVAL = 10000; // sincroniza cada 10 segundos
 
 const CONCEPTOS = {
   ingreso: ['Venta producto', 'Clínica'],
@@ -475,7 +476,7 @@ const CONCEPTOS = {
 let tipo = 'ingreso';
 let concepto = '';
 let medio = '';
-let cargando = false;
+let pollTimer = null;
 
 // ====== HELPERS ======
 const hoy = () => new Date().toISOString().split('T')[0];
@@ -497,6 +498,10 @@ function formatFecha(iso) {
   return `${d}/${m}/${y}`;
 }
 
+function horaActual() {
+  return new Date().toLocaleTimeString('es-AR', {hour: '2-digit', minute: '2-digit', hour12: false});
+}
+
 // ====== SHEET SYNC ======
 async function sheetPost(data) {
   try {
@@ -511,33 +516,39 @@ async function sheetPost(data) {
   }
 }
 
-async function cargarDesdeSheet() {
-  mostrarCargando(true);
+async function sincronizarDesdeSheet() {
   try {
-    const res = await fetch(SHEET_URL);
+    const res = await fetch(SHEET_URL + '?t=' + Date.now()); // cache-bust
     const data = await res.json();
-    if (data.ok && data.movimientos.length) {
-      // Mergear: priorizar Sheet, evitar duplicados por id
-      const locales = getMovimientos();
-      const idsLocales = new Set(locales.map(m => m.id));
-      const nuevos = data.movimientos.filter(m => !idsLocales.has(m.id));
-      const merged = [...locales, ...nuevos];
-      // Ordenar por fecha+hora
+    if (!data.ok) return;
+
+    const locales = getMovimientos();
+    const idsLocales = new Set(locales.map(m => String(m.id)));
+
+    // IDs que vinieron del Sheet
+    const idsSheet = new Set(data.movimientos.map(m => String(m.id)));
+
+    // Agregar los que están en Sheet pero no en local
+    const nuevos = data.movimientos.filter(m => !idsLocales.has(String(m.id)));
+
+    // Quitar los que están en local pero ya no están en Sheet (fueron eliminados desde otro dispositivo)
+    const filtrados = locales.filter(m => idsSheet.has(String(m.id)));
+
+    if (nuevos.length > 0 || filtrados.length !== locales.length) {
+      const merged = [...filtrados, ...nuevos];
       merged.sort((a, b) => (a.fecha + a.hora).localeCompare(b.fecha + b.hora));
       saveMovimientos(merged);
+      renderMovimientos();
+      renderResumen();
     }
   } catch(e) {
-    console.warn('No se pudo cargar desde Sheet:', e);
+    // silencioso, reintenta en el próximo ciclo
   }
-  mostrarCargando(false);
-  renderMovimientos();
-  renderResumen();
 }
 
-function mostrarCargando(estado) {
-  cargando = estado;
-  const btn = document.getElementById('btnAgregar');
-  if (btn) btn.disabled = estado;
+function iniciarPolling() {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(sincronizarDesdeSheet, POLL_INTERVAL);
 }
 
 // ====== UI ======
@@ -552,7 +563,6 @@ function setTipo(t) {
   document.getElementById('btnAgregar').className = 'btn-agregar ' + t;
   document.getElementById('btnAgregar').textContent = t === 'ingreso' ? 'AGREGAR INGRESO' : 'AGREGAR EGRESO';
 
-  // tarjeta solo en ingreso
   const tarjeta = document.getElementById('medio-tarjeta');
   if (tarjeta) tarjeta.style.display = t === 'ingreso' ? '' : 'none';
   const grid = document.getElementById('mediosGrid');
@@ -605,19 +615,17 @@ async function agregar() {
   const mov = {
     id: Date.now(),
     fecha: hoy(),
-    hora: new Date().toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'}),
+    hora: horaActual(),
     tipo,
     concepto,
     medio,
     monto
   };
 
-  // Guardar en localStorage primero (inmediato)
   const movs = getMovimientos();
   movs.push(mov);
   saveMovimientos(movs);
 
-  // Limpiar form
   document.getElementById('montoInput').value = '';
   concepto = '';
   medio = '';
@@ -627,18 +635,17 @@ async function agregar() {
   renderResumen();
   showToast('✓ Registrado');
 
-  // Enviar al Sheet en segundo plano
+  // Guardar en Sheet y luego sincronizar para que el otro dispositivo lo vea
   await sheetPost({ action: 'agregar', ...mov });
+  await sincronizarDesdeSheet();
 }
 
 async function eliminar(id) {
   const movs = getMovimientos();
   const mov = movs.find(m => m.id === id);
-  const nuevos = movs.filter(m => m.id !== id);
-  saveMovimientos(nuevos);
+  saveMovimientos(movs.filter(m => m.id !== id));
   renderMovimientos();
   renderResumen();
-
   if (mov) {
     await sheetPost({ action: 'eliminar', ...mov });
   }
@@ -688,11 +695,9 @@ function renderFecha() {
 }
 
 function enviarWhatsApp() {
-  // Detectar qué día tiene movimientos pendientes (hoy o ayer si se olvidó)
   const todos = getMovimientos();
   if (!todos.length) { showToast('No hay movimientos para enviar'); return; }
 
-  // Tomar la fecha más antigua que quede en localStorage
   const fechaEnvio = todos[0].fecha;
   const movs = todos.filter(m => m.fecha === fechaEnvio);
 
@@ -702,7 +707,6 @@ function enviarWhatsApp() {
   const totalE   = egresos.reduce((s, m) => s + m.monto, 0);
   const neto     = totalI - totalE;
 
-  // Agrupar ingresos por medio
   const porMedio = {};
   ingresos.forEach(m => {
     if (!porMedio[m.medio]) porMedio[m.medio] = 0;
@@ -733,13 +737,11 @@ function enviarWhatsApp() {
 
   msg += `\n💰 *NETO DEL DÍA: ${formatPeso(neto)}*`;
 
-  // Abrir WhatsApp
   const url = `https://wa.me/${MI_NUMERO}?text=${encodeURIComponent(msg)}`;
   window.open(url, '_blank');
 
-  // Borrar del localStorage solo los de esa fecha (Sheet queda intacto)
-  const resto = todos.filter(m => m.fecha !== fechaEnvio);
-  saveMovimientos(resto);
+  // Borrar del localStorage solo esa fecha, Sheet queda intacto
+  saveMovimientos(todos.filter(m => m.fecha !== fechaEnvio));
   renderMovimientos();
   renderResumen();
   showToast('Resumen enviado ✓');
@@ -756,9 +758,11 @@ function showToast(msg) {
 renderFecha();
 renderConceptos();
 setTipo('ingreso');
-renderMovimientos();
-renderResumen();
-cargarDesdeSheet(); // Sincroniza con Sheet al abrir
+sincronizarDesdeSheet().then(() => {
+  renderMovimientos();
+  renderResumen();
+});
+iniciarPolling();
 </script>
 </body>
 </html>
