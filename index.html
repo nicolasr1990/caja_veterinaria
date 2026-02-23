@@ -463,7 +463,8 @@
 
 <script>
 // ====== CONFIG ======
-const MI_NUMERO = '5493772637058'; // ← CAMBIAR POR TU NÚMERO (código país sin +)
+const MI_NUMERO = '5491100000000'; // ← TU NÚMERO
+const SHEET_URL = 'https://script.google.com/macros/s/AKfycbxPn9ZdpBpqIWVtTve-zhtyfX2pr11qx5oSwYP4iTQsSncDGRqPUznGSJLd_-o201g/exec';
 
 const CONCEPTOS = {
   ingreso: ['Venta producto', 'Clínica'],
@@ -474,8 +475,9 @@ const CONCEPTOS = {
 let tipo = 'ingreso';
 let concepto = '';
 let medio = '';
+let cargando = false;
 
-// ====== INIT ======
+// ====== HELPERS ======
 const hoy = () => new Date().toISOString().split('T')[0];
 
 function getMovimientos() {
@@ -495,6 +497,49 @@ function formatFecha(iso) {
   return `${d}/${m}/${y}`;
 }
 
+// ====== SHEET SYNC ======
+async function sheetPost(data) {
+  try {
+    await fetch(SHEET_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+  } catch(e) {
+    console.warn('Error al sincronizar con Sheet:', e);
+  }
+}
+
+async function cargarDesdeSheet() {
+  mostrarCargando(true);
+  try {
+    const res = await fetch(SHEET_URL);
+    const data = await res.json();
+    if (data.ok && data.movimientos.length) {
+      // Mergear: priorizar Sheet, evitar duplicados por id
+      const locales = getMovimientos();
+      const idsLocales = new Set(locales.map(m => m.id));
+      const nuevos = data.movimientos.filter(m => !idsLocales.has(m.id));
+      const merged = [...locales, ...nuevos];
+      // Ordenar por fecha+hora
+      merged.sort((a, b) => (a.fecha + a.hora).localeCompare(b.fecha + b.hora));
+      saveMovimientos(merged);
+    }
+  } catch(e) {
+    console.warn('No se pudo cargar desde Sheet:', e);
+  }
+  mostrarCargando(false);
+  renderMovimientos();
+  renderResumen();
+}
+
+function mostrarCargando(estado) {
+  cargando = estado;
+  const btn = document.getElementById('btnAgregar');
+  if (btn) btn.disabled = estado;
+}
+
 // ====== UI ======
 function setTipo(t) {
   tipo = t;
@@ -507,16 +552,11 @@ function setTipo(t) {
   document.getElementById('btnAgregar').className = 'btn-agregar ' + t;
   document.getElementById('btnAgregar').textContent = t === 'ingreso' ? 'AGREGAR INGRESO' : 'AGREGAR EGRESO';
 
-  // medios: siempre visible, pero tarjeta solo en ingreso
-  document.querySelector('.field:nth-child(2)').style.display = '';
+  // tarjeta solo en ingreso
   const tarjeta = document.getElementById('medio-tarjeta');
-  if (tarjeta) {
-    tarjeta.style.display = t === 'ingreso' ? '' : 'none';
-  }
+  if (tarjeta) tarjeta.style.display = t === 'ingreso' ? '' : 'none';
   const grid = document.getElementById('mediosGrid');
-  if (grid) {
-    grid.className = 'options-grid cols-' + (t === 'ingreso' ? '3' : '2');
-  }
+  if (grid) grid.className = 'options-grid cols-' + (t === 'ingreso' ? '3' : '2');
 
   renderConceptos();
   clearMedios();
@@ -525,16 +565,16 @@ function setTipo(t) {
 function renderConceptos() {
   const opts = CONCEPTOS[tipo];
   const el = document.getElementById('conceptoOptions');
-  el.className = 'options-grid cols-' + (opts.length <= 2 ? '2' : opts.length === 3 ? '3' : '2');
+  el.className = 'options-grid cols-' + (opts.length <= 2 ? '2' : '3');
   el.innerHTML = opts.map(c =>
-    `<button class="opt-btn" id="con-${c}" onclick="setConcepto('${c}')">${c}</button>`
+    `<button class="opt-btn" id="con-${c.replace(/ /g,'_')}" onclick="setConcepto('${c}')">${c}</button>`
   ).join('');
 }
 
 function setConcepto(c) {
   concepto = c;
   CONCEPTOS[tipo].forEach(x => {
-    const el = document.getElementById('con-' + x);
+    const el = document.getElementById('con-' + x.replace(/ /g,'_'));
     if (el) el.className = 'opt-btn' + (x === c ? (tipo === 'ingreso' ? ' sel-ingreso' : ' sel-egreso') : '');
   });
 }
@@ -555,41 +595,53 @@ function clearMedios() {
   medio = '';
 }
 
-function agregar() {
+async function agregar() {
   const monto = parseFloat(document.getElementById('montoInput').value);
 
   if (!concepto) { showToast('Elegí un concepto'); return; }
   if (!medio) { showToast('Elegí el medio de pago'); return; }
   if (!monto || monto <= 0) { showToast('Ingresá un monto válido'); return; }
 
-  const movs = getMovimientos();
-  movs.push({
+  const mov = {
     id: Date.now(),
     fecha: hoy(),
-    hora: new Date().toLocaleTimeString('es-AR', {hour:'2-digit',minute:'2-digit'}),
+    hora: new Date().toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'}),
     tipo,
     concepto,
-    medio: tipo === 'ingreso' ? medio : '',
+    medio,
     monto
-  });
+  };
+
+  // Guardar en localStorage primero (inmediato)
+  const movs = getMovimientos();
+  movs.push(mov);
   saveMovimientos(movs);
 
+  // Limpiar form
   document.getElementById('montoInput').value = '';
   concepto = '';
   medio = '';
   renderConceptos();
   clearMedios();
-
   renderMovimientos();
   renderResumen();
   showToast('✓ Registrado');
+
+  // Enviar al Sheet en segundo plano
+  await sheetPost({ action: 'agregar', ...mov });
 }
 
-function eliminar(id) {
-  const movs = getMovimientos().filter(m => m.id !== id);
-  saveMovimientos(movs);
+async function eliminar(id) {
+  const movs = getMovimientos();
+  const mov = movs.find(m => m.id === id);
+  const nuevos = movs.filter(m => m.id !== id);
+  saveMovimientos(nuevos);
   renderMovimientos();
   renderResumen();
+
+  if (mov) {
+    await sheetPost({ action: 'eliminar', ...mov });
+  }
 }
 
 function renderMovimientos() {
@@ -620,35 +672,35 @@ function renderMovimientos() {
 function renderResumen() {
   const movs = getMovimientos().filter(m => m.fecha === hoy());
   const ingresos = movs.filter(m => m.tipo === 'ingreso').reduce((s, m) => s + m.monto, 0);
-  const egresos = movs.filter(m => m.tipo === 'egreso').reduce((s, m) => s + m.monto, 0);
+  const egresos  = movs.filter(m => m.tipo === 'egreso').reduce((s, m) => s + m.monto, 0);
   const neto = ingresos - egresos;
-
   document.getElementById('totalIngresos').textContent = formatPeso(ingresos);
-  document.getElementById('totalEgresos').textContent = formatPeso(egresos);
-  document.getElementById('totalNeto').textContent = formatPeso(neto);
+  document.getElementById('totalEgresos').textContent  = formatPeso(egresos);
+  document.getElementById('totalNeto').textContent     = formatPeso(neto);
 }
 
 function renderFecha() {
   const now = new Date();
-  const dias = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const dias  = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
   const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
   document.getElementById('fechaBadge').innerHTML =
     `${dias[now.getDay()]} ${now.getDate()} ${meses[now.getMonth()]}<br>${now.getFullYear()}`;
 }
 
 function enviarWhatsApp() {
-  const movs = getMovimientos().filter(m => m.fecha === hoy());
+  // Detectar qué día tiene movimientos pendientes (hoy o ayer si se olvidó)
+  const todos = getMovimientos();
+  if (!todos.length) { showToast('No hay movimientos para enviar'); return; }
 
-  if (!movs.length) {
-    showToast('No hay movimientos hoy');
-    return;
-  }
+  // Tomar la fecha más antigua que quede en localStorage
+  const fechaEnvio = todos[0].fecha;
+  const movs = todos.filter(m => m.fecha === fechaEnvio);
 
   const ingresos = movs.filter(m => m.tipo === 'ingreso');
-  const egresos = movs.filter(m => m.tipo === 'egreso');
-  const totalI = ingresos.reduce((s, m) => s + m.monto, 0);
-  const totalE = egresos.reduce((s, m) => s + m.monto, 0);
-  const neto = totalI - totalE;
+  const egresos  = movs.filter(m => m.tipo === 'egreso');
+  const totalI   = ingresos.reduce((s, m) => s + m.monto, 0);
+  const totalE   = egresos.reduce((s, m) => s + m.monto, 0);
+  const neto     = totalI - totalE;
 
   // Agrupar ingresos por medio
   const porMedio = {};
@@ -657,7 +709,7 @@ function enviarWhatsApp() {
     porMedio[m.medio] += m.monto;
   });
 
-  let msg = `🐾 *Resumen del día - ${formatFecha(hoy())}*\n\n`;
+  let msg = `🐾 *Resumen del día - ${formatFecha(fechaEnvio)}*\n\n`;
 
   if (ingresos.length) {
     msg += `✅ *INGRESOS*\n`;
@@ -665,7 +717,6 @@ function enviarWhatsApp() {
       msg += `  · ${m.concepto} (${m.medio}): ${formatPeso(m.monto)}\n`;
     });
     msg += `  *Total: ${formatPeso(totalI)}*\n`;
-
     msg += `\n  _Por medio de pago:_\n`;
     Object.entries(porMedio).forEach(([med, tot]) => {
       msg += `  · ${med.charAt(0).toUpperCase() + med.slice(1)}: ${formatPeso(tot)}\n`;
@@ -682,15 +733,23 @@ function enviarWhatsApp() {
 
   msg += `\n💰 *NETO DEL DÍA: ${formatPeso(neto)}*`;
 
+  // Abrir WhatsApp
   const url = `https://wa.me/${MI_NUMERO}?text=${encodeURIComponent(msg)}`;
   window.open(url, '_blank');
+
+  // Borrar del localStorage solo los de esa fecha (Sheet queda intacto)
+  const resto = todos.filter(m => m.fecha !== fechaEnvio);
+  saveMovimientos(resto);
+  renderMovimientos();
+  renderResumen();
+  showToast('Resumen enviado ✓');
 }
 
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2000);
+  setTimeout(() => t.classList.remove('show'), 2500);
 }
 
 // ====== BOOTSTRAP ======
@@ -699,6 +758,7 @@ renderConceptos();
 setTipo('ingreso');
 renderMovimientos();
 renderResumen();
+cargarDesdeSheet(); // Sincroniza con Sheet al abrir
 </script>
 </body>
 </html>
