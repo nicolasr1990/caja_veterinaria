@@ -102,6 +102,60 @@
   .resumen-valor.rojo { color: var(--accent-red); }
   .resumen-valor.amarillo { color: var(--accent-yellow); }
 
+  .caja-inicial-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .caja-inicial-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .caja-inicial-input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 12px;
+    color: var(--text);
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+    font-weight: 600;
+    text-align: right;
+    outline: none;
+    transition: border-color 0.2s;
+    min-width: 0;
+  }
+
+  .caja-inicial-input:focus { border-color: var(--accent-yellow); }
+
+  .caja-final-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .caja-final-valor {
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--accent-yellow);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
   .tabs {
     display: flex;
     padding: 16px 20px 0;
@@ -423,6 +477,13 @@
   </div>
 </div>
 
+<div class="caja-inicial-bar">
+  <span class="caja-inicial-label">Caja inicial</span>
+  <input type="number" class="caja-inicial-input" id="cajaInicialInput" placeholder="$0" inputmode="numeric" oninput="onCajaInicialInput()">
+  <span class="caja-final-label">En caja</span>
+  <span class="caja-final-valor" id="cajaFinalValor">—</span>
+</div>
+
 <div class="tabs">
   <button class="tab active-ingreso" id="tabIngreso" onclick="setTipo('ingreso')">+ Ingreso</button>
   <button class="tab" id="tabEgreso" onclick="setTipo('egreso')">− Egreso</button>
@@ -472,9 +533,9 @@
 
 <script>
 // ====== CONFIG ======
-const MI_NUMERO = '5493772637058'; // ← TU NÚMERO
+const MI_NUMERO = '5493772637058';
 const SHEET_URL = 'https://script.google.com/macros/s/AKfycbxPn9ZdpBpqIWVtTve-zhtyfX2pr11qx5oSwYP4iTQsSncDGRqPUznGSJLd_-o201g/exec';
-const POLL_INTERVAL = 10000; // sincroniza cada 10 segundos
+const POLL_INTERVAL = 10000;
 
 const CONCEPTOS = {
   ingreso: ['Venta producto', 'Clínica'],
@@ -493,25 +554,49 @@ const hoy = () => new Date().toISOString().split('T')[0];
 function getMovimientos() {
   return JSON.parse(localStorage.getItem('movimientos') || '[]');
 }
-
 function saveMovimientos(movs) {
   localStorage.setItem('movimientos', JSON.stringify(movs));
 }
-
 function formatPeso(n) {
   return '$' + Number(n).toLocaleString('es-AR');
 }
-
 function formatFecha(iso) {
   const [y, m, d] = iso.split('-');
   return `${d}/${m}/${y}`;
 }
-
 function horaActual() {
   const now = new Date();
-  const h = String(now.getHours()).padStart(2, '0');
-  const m = String(now.getMinutes()).padStart(2, '0');
-  return `${h}:${m}`;
+  return String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+}
+
+// ====== CAJA INICIAL ======
+function getCajaInicialLocal() {
+  const data = JSON.parse(localStorage.getItem('cajaInicial') || '{}');
+  if (data.fecha !== hoy()) return 0;
+  return data.monto || 0;
+}
+function saveCajaInicialLocal(monto) {
+  localStorage.setItem('cajaInicial', JSON.stringify({ fecha: hoy(), monto }));
+}
+
+function onCajaInicialInput() {
+  const monto = parseFloat(document.getElementById('cajaInicialInput').value) || 0;
+  saveCajaInicialLocal(monto);
+  recalcularCajaFinal();
+  // Guardar en Sheet en segundo plano
+  sheetPost({ action: 'guardarCajaInicial', fecha: hoy(), monto });
+}
+
+function recalcularCajaFinal() {
+  const cajaInicial = getCajaInicialLocal();
+  const el = document.getElementById('cajaFinalValor');
+  if (!cajaInicial) { el.textContent = '—'; return; }
+
+  const movs = getMovimientos().filter(m => m.fecha === hoy());
+  // Solo efectivo afecta la caja física
+  const ingresosEfectivo = movs.filter(m => m.tipo === 'ingreso' && m.medio === 'efectivo').reduce((s, m) => s + m.monto, 0);
+  const egresosEfectivo  = movs.filter(m => m.tipo === 'egreso'  && m.medio === 'efectivo').reduce((s, m) => s + m.monto, 0);
+  el.textContent = formatPeso(cajaInicial + ingresosEfectivo - egresosEfectivo);
 }
 
 // ====== SHEET SYNC ======
@@ -524,27 +609,22 @@ async function sheetPost(data) {
       body: JSON.stringify(data)
     });
   } catch(e) {
-    console.warn('Error al sincronizar con Sheet:', e);
+    console.warn('sheetPost error:', e);
   }
 }
 
 async function sincronizarDesdeSheet() {
   try {
-    const res = await fetch(SHEET_URL + '?t=' + Date.now()); // cache-bust
+    const res = await fetch(SHEET_URL + '?t=' + Date.now());
     const data = await res.json();
     if (!data.ok) return;
 
+    // --- Movimientos ---
     const locales = getMovimientos();
     const idsLocales = new Set(locales.map(m => String(m.id)));
-
-    // IDs que vinieron del Sheet
-    const idsSheet = new Set(data.movimientos.map(m => String(m.id)));
-
-    // Agregar los que están en Sheet pero no en local
-    const nuevos = data.movimientos.filter(m => !idsLocales.has(String(m.id)));
-
-    // Quitar los que están en local pero ya no están en Sheet (fueron eliminados desde otro dispositivo)
-    const filtrados = locales.filter(m => idsSheet.has(String(m.id)));
+    const idsSheet   = new Set(data.movimientos.map(m => String(m.id)));
+    const nuevos     = data.movimientos.filter(m => !idsLocales.has(String(m.id)));
+    const filtrados  = locales.filter(m => idsSheet.has(String(m.id)));
 
     if (nuevos.length > 0 || filtrados.length !== locales.length) {
       const merged = [...filtrados, ...nuevos];
@@ -553,8 +633,17 @@ async function sincronizarDesdeSheet() {
       renderMovimientos();
       renderResumen();
     }
+
+    // --- Caja inicial desde Sheet (solo si no hay valor local de hoy) ---
+    if (data.cajaInicial && data.cajaInicial[hoy()] && !getCajaInicialLocal()) {
+      const montoSheet = data.cajaInicial[hoy()];
+      saveCajaInicialLocal(montoSheet);
+      document.getElementById('cajaInicialInput').value = montoSheet;
+      recalcularCajaFinal();
+    }
+
   } catch(e) {
-    // silencioso, reintenta en el próximo ciclo
+    // silencioso
   }
 }
 
@@ -565,21 +654,15 @@ function iniciarPolling() {
 
 // ====== UI ======
 function setTipo(t) {
-  tipo = t;
-  concepto = '';
-  medio = '';
-
+  tipo = t; concepto = ''; medio = '';
   document.getElementById('tabIngreso').className = 'tab' + (t === 'ingreso' ? ' active-ingreso' : '');
-  document.getElementById('tabEgreso').className = 'tab' + (t === 'egreso' ? ' active-egreso' : '');
-
+  document.getElementById('tabEgreso').className  = 'tab' + (t === 'egreso'  ? ' active-egreso'  : '');
   document.getElementById('btnAgregar').className = 'btn-agregar ' + t;
   document.getElementById('btnAgregar').textContent = t === 'ingreso' ? 'AGREGAR INGRESO' : 'AGREGAR EGRESO';
-
   const tarjeta = document.getElementById('medio-tarjeta');
   if (tarjeta) tarjeta.style.display = t === 'ingreso' ? '' : 'none';
   const grid = document.getElementById('mediosGrid');
   if (grid) grid.className = 'options-grid cols-' + (t === 'ingreso' ? '3' : '2');
-
   renderConceptos();
   clearMedios();
 }
@@ -619,35 +702,21 @@ function clearMedios() {
 
 async function agregar() {
   const monto = parseFloat(document.getElementById('montoInput').value);
-
   if (!concepto) { showToast('Elegí un concepto'); return; }
-  if (!medio) { showToast('Elegí el medio de pago'); return; }
+  if (!medio)    { showToast('Elegí el medio de pago'); return; }
   if (!monto || monto <= 0) { showToast('Ingresá un monto válido'); return; }
 
-  const mov = {
-    id: Date.now(),
-    fecha: hoy(),
-    hora: horaActual(),
-    tipo,
-    concepto,
-    medio,
-    monto
-  };
-
+  const mov = { id: Date.now(), fecha: hoy(), hora: horaActual(), tipo, concepto, medio, monto };
   const movs = getMovimientos();
   movs.push(mov);
   saveMovimientos(movs);
 
   document.getElementById('montoInput').value = '';
-  concepto = '';
-  medio = '';
-  renderConceptos();
-  clearMedios();
-  renderMovimientos();
-  renderResumen();
+  concepto = ''; medio = '';
+  renderConceptos(); clearMedios();
+  renderMovimientos(); renderResumen();
   showToast('✓ Registrado');
 
-  // Guardar en Sheet y luego sincronizar para que el otro dispositivo lo vea
   await sheetPost({ action: 'agregar', ...mov });
   await sincronizarDesdeSheet();
 }
@@ -656,22 +725,17 @@ async function eliminar(id) {
   const movs = getMovimientos();
   const mov = movs.find(m => m.id === id);
   saveMovimientos(movs.filter(m => m.id !== id));
-  renderMovimientos();
-  renderResumen();
-  if (mov) {
-    await sheetPost({ action: 'eliminar', ...mov });
-  }
+  renderMovimientos(); renderResumen();
+  if (mov) await sheetPost({ action: 'eliminar', ...mov });
 }
 
 function renderMovimientos() {
   const movs = getMovimientos().filter(m => m.fecha === hoy()).reverse();
   const el = document.getElementById('movList');
-
   if (!movs.length) {
     el.innerHTML = '<div class="empty-state">Sin movimientos hoy.<br>Empezá cargando el primero.</div>';
     return;
   }
-
   el.innerHTML = movs.map(m => `
     <div class="mov-item">
       <div class="mov-left">
@@ -692,10 +756,10 @@ function renderResumen() {
   const movs = getMovimientos().filter(m => m.fecha === hoy());
   const ingresos = movs.filter(m => m.tipo === 'ingreso').reduce((s, m) => s + m.monto, 0);
   const egresos  = movs.filter(m => m.tipo === 'egreso').reduce((s, m) => s + m.monto, 0);
-  const neto = ingresos - egresos;
   document.getElementById('totalIngresos').textContent = formatPeso(ingresos);
   document.getElementById('totalEgresos').textContent  = formatPeso(egresos);
-  document.getElementById('totalNeto').textContent     = formatPeso(neto);
+  document.getElementById('totalNeto').textContent     = formatPeso(ingresos - egresos);
+  recalcularCajaFinal();
 }
 
 function renderFecha() {
@@ -712,12 +776,10 @@ function enviarWhatsApp() {
 
   const fechaEnvio = todos[0].fecha;
   const movs = todos.filter(m => m.fecha === fechaEnvio);
-
   const ingresos = movs.filter(m => m.tipo === 'ingreso');
   const egresos  = movs.filter(m => m.tipo === 'egreso');
   const totalI   = ingresos.reduce((s, m) => s + m.monto, 0);
   const totalE   = egresos.reduce((s, m) => s + m.monto, 0);
-  const neto     = totalI - totalE;
 
   const porMedio = {};
   ingresos.forEach(m => {
@@ -726,36 +788,25 @@ function enviarWhatsApp() {
   });
 
   let msg = `🐾 *Resumen del día - ${formatFecha(fechaEnvio)}*\n\n`;
-
   if (ingresos.length) {
     msg += `✅ *INGRESOS*\n`;
-    ingresos.forEach(m => {
-      msg += `  · ${m.concepto} (${m.medio}): ${formatPeso(m.monto)}\n`;
-    });
-    msg += `  *Total: ${formatPeso(totalI)}*\n`;
-    msg += `\n  _Por medio de pago:_\n`;
+    ingresos.forEach(m => { msg += `  · ${m.concepto} (${m.medio}): ${formatPeso(m.monto)}\n`; });
+    msg += `  *Total: ${formatPeso(totalI)}*\n\n  _Por medio de pago:_\n`;
     Object.entries(porMedio).forEach(([med, tot]) => {
       msg += `  · ${med.charAt(0).toUpperCase() + med.slice(1)}: ${formatPeso(tot)}\n`;
     });
   }
-
   if (egresos.length) {
     msg += `\n❌ *EGRESOS*\n`;
-    egresos.forEach(m => {
-      msg += `  · ${m.concepto} (${m.medio}): ${formatPeso(m.monto)}\n`;
-    });
+    egresos.forEach(m => { msg += `  · ${m.concepto} (${m.medio}): ${formatPeso(m.monto)}\n`; });
     msg += `  *Total: ${formatPeso(totalE)}*\n`;
   }
+  msg += `\n💰 *NETO DEL DÍA: ${formatPeso(totalI - totalE)}*`;
 
-  msg += `\n💰 *NETO DEL DÍA: ${formatPeso(neto)}*`;
+  window.open(`https://wa.me/${MI_NUMERO}?text=${encodeURIComponent(msg)}`, '_blank');
 
-  const url = `https://wa.me/${MI_NUMERO}?text=${encodeURIComponent(msg)}`;
-  window.open(url, '_blank');
-
-  // Borrar del localStorage solo esa fecha, Sheet queda intacto
   saveMovimientos(todos.filter(m => m.fecha !== fechaEnvio));
-  renderMovimientos();
-  renderResumen();
+  renderMovimientos(); renderResumen();
   showToast('Resumen enviado ✓');
 }
 
@@ -770,6 +821,11 @@ function showToast(msg) {
 renderFecha();
 renderConceptos();
 setTipo('ingreso');
+// Restaurar caja inicial local si existe para hoy
+const cajaGuardada = getCajaInicialLocal();
+if (cajaGuardada > 0) {
+  document.getElementById('cajaInicialInput').value = cajaGuardada;
+}
 sincronizarDesdeSheet().then(() => {
   renderMovimientos();
   renderResumen();
