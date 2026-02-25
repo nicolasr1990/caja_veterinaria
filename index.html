@@ -110,7 +110,6 @@
     background: var(--surface);
     border-bottom: 1px solid var(--border);
   }
-
   .caja-inicial-label {
     font-size: 10px;
     color: var(--text-muted);
@@ -119,7 +118,6 @@
     white-space: nowrap;
     flex-shrink: 0;
   }
-
   .caja-inicial-input {
     flex: 1;
     background: var(--surface2);
@@ -135,14 +133,8 @@
     transition: border-color 0.2s;
     min-width: 0;
   }
-
   .caja-inicial-input:focus { border-color: var(--accent-yellow); }
-
-  .caja-inicial-input:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
+  .caja-inicial-input:disabled { opacity: 0.6; cursor: not-allowed; }
   .caja-final-label {
     font-size: 10px;
     color: var(--text-muted);
@@ -151,7 +143,6 @@
     white-space: nowrap;
     flex-shrink: 0;
   }
-
   .caja-final-valor {
     font-family: 'Fraunces', serif;
     font-size: 16px;
@@ -160,7 +151,6 @@
     white-space: nowrap;
     flex-shrink: 0;
   }
-
   .bottom-bar {
     position: fixed;
     bottom: 0;
@@ -172,7 +162,6 @@
     display: flex;
     gap: 8px;
   }
-
   .btn-whatsapp {
     flex: 2;
     padding: 14px;
@@ -189,9 +178,7 @@
     gap: 8px;
     transition: all 0.2s;
   }
-
   .btn-whatsapp:active { background: rgba(37, 211, 102, 0.2); }
-
   .btn-limpiar {
     flex: 1;
     padding: 14px;
@@ -205,7 +192,6 @@
     transition: all 0.2s;
     text-align: center;
   }
-
   .btn-limpiar:active { background: var(--surface2); }
 
   .tabs {
@@ -601,6 +587,7 @@ let tipo = 'ingreso';
 let concepto = '';
 let medio = '';
 let pollTimer = null;
+let limpiando = false; // evita que el polling retraiga datos mientras se limpia
 
 // ====== HELPERS ======
 const hoy = () => new Date().toISOString().split('T')[0];
@@ -637,13 +624,9 @@ function confirmarCajaInicial() {
   const input = document.getElementById('cajaInicialInput');
   const monto = parseFloat(input.value) || 0;
   if (!monto) return;
-
-  // Bloquear el campo — ya no se puede modificar
   input.disabled = true;
   saveCajaInicialLocal(monto);
   recalcularCajaFinal();
-
-  // Guardar en Sheet en segundo plano
   sheetPost({ action: 'guardarCajaInicial', fecha: hoy(), monto });
 }
 
@@ -651,9 +634,7 @@ function recalcularCajaFinal() {
   const cajaInicial = getCajaInicialLocal();
   const el = document.getElementById('cajaFinalValor');
   if (!cajaInicial) { el.textContent = '—'; return; }
-
   const movs = getMovimientos().filter(m => m.fecha === hoy());
-  // Solo efectivo afecta la caja física
   const ingEfectivo = movs.filter(m => m.tipo === 'ingreso' && m.medio === 'efectivo').reduce((s, m) => s + m.monto, 0);
   const egEfectivo  = movs.filter(m => m.tipo === 'egreso'  && m.medio === 'efectivo').reduce((s, m) => s + m.monto, 0);
   el.textContent = formatPeso(cajaInicial + ingEfectivo - egEfectivo);
@@ -674,13 +655,13 @@ async function sheetPost(data) {
 }
 
 async function sincronizarDesdeSheet() {
+  if (limpiando) return; // no sincronizar mientras se está limpiando
   try {
     const res = await fetch(SHEET_URL + '?t=' + Date.now());
     const data = await res.json();
     if (!data.ok) return;
 
-    // --- Movimientos ---
-    const locales  = getMovimientos();
+    const locales    = getMovimientos();
     const idsLocales = new Set(locales.map(m => String(m.id)));
     const idsSheet   = new Set(data.movimientos.map(m => String(m.id)));
     const nuevos     = data.movimientos.filter(m => !idsLocales.has(String(m.id)));
@@ -694,7 +675,7 @@ async function sincronizarDesdeSheet() {
       renderResumen();
     }
 
-    // --- Caja inicial desde Sheet (solo si no hay valor local bloqueado de hoy) ---
+    // Caja inicial desde Sheet (solo si no hay valor local bloqueado de hoy)
     if (data.cajaInicial && data.cajaInicial[hoy()] && !getCajaInicialLocal()) {
       const montoSheet = data.cajaInicial[hoy()];
       saveCajaInicialLocal(montoSheet);
@@ -703,7 +684,6 @@ async function sincronizarDesdeSheet() {
       input.disabled = true;
       recalcularCajaFinal();
     }
-
   } catch(e) { /* silencioso */ }
 }
 
@@ -789,19 +769,99 @@ async function eliminar(id) {
   if (mov) await sheetPost({ action: 'eliminar', ...mov });
 }
 
-function limpiarRegistros() {
-  const todos = getMovimientos();
-  if (!todos.length) { showToast('No hay registros para limpiar'); return; }
-  if (!confirm('¿Limpiar todos los registros de la app? El Sheet no se toca.')) return;
+function resetearUI() {
   saveMovimientos([]);
-  // También limpiar caja inicial local
   localStorage.removeItem('cajaInicial');
   const input = document.getElementById('cajaInicialInput');
   input.value = '';
   input.disabled = false;
   document.getElementById('cajaFinalValor').textContent = '—';
-  renderMovimientos(); renderResumen();
-  showToast('Registros limpiados ✓');
+  renderMovimientos();
+  renderResumen();
+}
+
+function armarMensajeWA(movs, fecha) {
+  const ingresos = movs.filter(m => m.tipo === 'ingreso');
+  const egresos  = movs.filter(m => m.tipo === 'egreso');
+  const totalI   = ingresos.reduce((s, m) => s + m.monto, 0);
+  const totalE   = egresos.reduce((s, m) => s + m.monto, 0);
+
+  let msg = `🐾 *Resumen del día - ${formatFecha(fecha)}*\n`;
+
+  if (ingresos.length) {
+    msg += `\n✅ *INGRESOS*\n`;
+    const porConcepto = {};
+    ingresos.forEach(m => {
+      if (!porConcepto[m.concepto]) porConcepto[m.concepto] = {};
+      if (!porConcepto[m.concepto][m.medio]) porConcepto[m.concepto][m.medio] = 0;
+      porConcepto[m.concepto][m.medio] += m.monto;
+    });
+    Object.entries(porConcepto).forEach(([conc, medios]) => {
+      const subtotal = Object.values(medios).reduce((s, v) => s + v, 0);
+      msg += `\n  *${conc}*\n`;
+      Object.entries(medios).forEach(([med, tot]) => {
+        msg += `    · ${med.charAt(0).toUpperCase() + med.slice(1)}: ${formatPeso(tot)}\n`;
+      });
+      msg += `    _Subtotal: ${formatPeso(subtotal)}_\n`;
+    });
+    msg += `\n  *Total ingresos: ${formatPeso(totalI)}*\n`;
+  }
+
+  if (egresos.length) {
+    msg += `\n❌ *EGRESOS*\n`;
+    const porConcepto = {};
+    egresos.forEach(m => {
+      if (!porConcepto[m.concepto]) porConcepto[m.concepto] = {};
+      if (!porConcepto[m.concepto][m.medio]) porConcepto[m.concepto][m.medio] = 0;
+      porConcepto[m.concepto][m.medio] += m.monto;
+    });
+    Object.entries(porConcepto).forEach(([conc, medios]) => {
+      const subtotal = Object.values(medios).reduce((s, v) => s + v, 0);
+      msg += `\n  *${conc}*\n`;
+      Object.entries(medios).forEach(([med, tot]) => {
+        msg += `    · ${med.charAt(0).toUpperCase() + med.slice(1)}: ${formatPeso(tot)}\n`;
+      });
+      msg += `    _Subtotal: ${formatPeso(subtotal)}_\n`;
+    });
+    msg += `\n  *Total egresos: ${formatPeso(totalE)}*\n`;
+  }
+
+  msg += `\n💰 *NETO DEL DÍA: ${formatPeso(totalI - totalE)}*`;
+  return msg;
+}
+
+async function enviarWhatsApp() {
+  // Siempre envía los movimientos de HOY únicamente
+  const movs = getMovimientos().filter(m => m.fecha === hoy());
+  if (!movs.length) { showToast('No hay movimientos hoy para enviar'); return; }
+
+  const msg = armarMensajeWA(movs, hoy());
+  window.open(`https://wa.me/${MI_NUMERO}?text=${encodeURIComponent(msg)}`, '_blank');
+  showToast('Resumen enviado ✓');
+}
+
+async function limpiarRegistros() {
+  const movs = getMovimientos();
+  if (!movs.length) { showToast('No hay registros para limpiar'); return; }
+  if (!confirm('¿Limpiar todos los registros? Se borrará de la app y del Sheet.')) return;
+
+  // Pausar polling para que no retraiga datos mientras limpiamos
+  limpiando = true;
+  if (pollTimer) clearInterval(pollTimer);
+
+  // Obtener fechas únicas y borrar cada una del Sheet
+  const fechas = [...new Set(movs.map(m => m.fecha))];
+  await Promise.all(fechas.map(fecha => sheetPost({ action: 'borrarDia', fecha })));
+
+  // Limpiar UI y localStorage
+  resetearUI();
+  showToast('Registros borrados ✓');
+
+  // Reanudar polling después de 3 segundos (tiempo para que el Sheet procese)
+  setTimeout(() => {
+    limpiando = false;
+    iniciarPolling();
+  }, 3000);
 }
 
 function renderMovimientos() {
@@ -843,70 +903,6 @@ function renderFecha() {
   const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
   document.getElementById('fechaBadge').innerHTML =
     `${dias[now.getDay()]} ${now.getDate()} ${meses[now.getMonth()]}<br>${now.getFullYear()}`;
-}
-
-function armarMensajeWA(movs, fecha) {
-  const ingresos = movs.filter(m => m.tipo === 'ingreso');
-  const egresos  = movs.filter(m => m.tipo === 'egreso');
-  const totalI   = ingresos.reduce((s, m) => s + m.monto, 0);
-  const totalE   = egresos.reduce((s, m) => s + m.monto, 0);
-
-  let msg = `🐾 *Resumen del día - ${formatFecha(fecha)}*\n`;
-
-  if (ingresos.length) {
-    msg += `\n✅ *INGRESOS*\n`;
-    // Agrupar por concepto
-    const porConcepto = {};
-    ingresos.forEach(m => {
-      if (!porConcepto[m.concepto]) porConcepto[m.concepto] = {};
-      if (!porConcepto[m.concepto][m.medio]) porConcepto[m.concepto][m.medio] = 0;
-      porConcepto[m.concepto][m.medio] += m.monto;
-    });
-    Object.entries(porConcepto).forEach(([conc, medios]) => {
-      const subtotal = Object.values(medios).reduce((s, v) => s + v, 0);
-      msg += `\n  *${conc}*\n`;
-      Object.entries(medios).forEach(([med, tot]) => {
-        msg += `    · ${med.charAt(0).toUpperCase() + med.slice(1)}: ${formatPeso(tot)}\n`;
-      });
-      msg += `    _Subtotal: ${formatPeso(subtotal)}_\n`;
-    });
-    msg += `\n  *Total ingresos: ${formatPeso(totalI)}*\n`;
-  }
-
-  if (egresos.length) {
-    msg += `\n❌ *EGRESOS*\n`;
-    const porConcepto = {};
-    egresos.forEach(m => {
-      if (!porConcepto[m.concepto]) porConcepto[m.concepto] = {};
-      if (!porConcepto[m.concepto][m.medio]) porConcepto[m.concepto][m.medio] = 0;
-      porConcepto[m.concepto][m.medio] += m.monto;
-    });
-    Object.entries(porConcepto).forEach(([conc, medios]) => {
-      const subtotal = Object.values(medios).reduce((s, v) => s + v, 0);
-      msg += `\n  *${conc}*\n`;
-      Object.entries(medios).forEach(([med, tot]) => {
-        msg += `    · ${med.charAt(0).toUpperCase() + med.slice(1)}: ${formatPeso(tot)}\n`;
-      });
-      msg += `    _Subtotal: ${formatPeso(subtotal)}_\n`;
-    });
-    msg += `\n  *Total egresos: ${formatPeso(totalE)}*\n`;
-  }
-
-  msg += `\n💰 *NETO DEL DÍA: ${formatPeso(totalI - totalE)}*`;
-  return msg;
-}
-
-function enviarWhatsApp() {
-  const todos = getMovimientos();
-  if (!todos.length) { showToast('No hay movimientos para enviar'); return; }
-
-  const fechaEnvio = todos[0].fecha;
-  const movs = todos.filter(m => m.fecha === fechaEnvio);
-  const msg = armarMensajeWA(movs, fechaEnvio);
-
-  window.open(`https://wa.me/${MI_NUMERO}?text=${encodeURIComponent(msg)}`, '_blank');
-  showToast('Resumen enviado ✓');
-  // NO borra automático — el empleado usa el botón Limpiar cuando quiera
 }
 
 function showToast(msg) {
