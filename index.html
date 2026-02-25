@@ -843,7 +843,7 @@ async function enviarWhatsApp() {
 async function limpiarRegistros() {
   const movs = getMovimientos();
   if (!movs.length) { showToast('No hay registros para limpiar'); return; }
-  if (!confirm('¿Limpiar todos los registros? Se borrará de la app y del Sheet.')) return;
+  if (!confirm('¿Limpiar todos los registros? No te olvides de enviar el resumen.')) return;
 
   // Pausar polling para que no retraiga datos mientras limpiamos
   limpiando = true;
