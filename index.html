@@ -138,6 +138,11 @@
 
   .caja-inicial-input:focus { border-color: var(--accent-yellow); }
 
+  .caja-inicial-input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
   .caja-final-label {
     font-size: 10px;
     color: var(--text-muted);
@@ -155,6 +160,53 @@
     white-space: nowrap;
     flex-shrink: 0;
   }
+
+  .bottom-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 12px 20px;
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn-whatsapp {
+    flex: 2;
+    padding: 14px;
+    border-radius: var(--radius);
+    border: 1px solid #25d366;
+    background: rgba(37, 211, 102, 0.1);
+    color: #25d366;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s;
+  }
+
+  .btn-whatsapp:active { background: rgba(37, 211, 102, 0.2); }
+
+  .btn-limpiar {
+    flex: 1;
+    padding: 14px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+  }
+
+  .btn-limpiar:active { background: var(--surface2); }
 
   .tabs {
     display: flex;
@@ -479,7 +531,8 @@
 
 <div class="caja-inicial-bar">
   <span class="caja-inicial-label">Caja inicial</span>
-  <input type="number" class="caja-inicial-input" id="cajaInicialInput" placeholder="$0" inputmode="numeric" oninput="onCajaInicialInput()">
+  <input type="number" class="caja-inicial-input" id="cajaInicialInput" placeholder="$0" inputmode="numeric"
+    onblur="confirmarCajaInicial()" onkeydown="if(event.key==='Enter'){this.blur()}">
   <span class="caja-final-label">En caja</span>
   <span class="caja-final-valor" id="cajaFinalValor">—</span>
 </div>
@@ -525,8 +578,9 @@
 <div class="bottom-bar">
   <button class="btn-whatsapp" onclick="enviarWhatsApp()">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="#25d366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-    Enviar resumen del día
+    Enviar resumen
   </button>
+  <button class="btn-limpiar" onclick="limpiarRegistros()">🗑 Limpiar</button>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -579,10 +633,16 @@ function saveCajaInicialLocal(monto) {
   localStorage.setItem('cajaInicial', JSON.stringify({ fecha: hoy(), monto }));
 }
 
-function onCajaInicialInput() {
-  const monto = parseFloat(document.getElementById('cajaInicialInput').value) || 0;
+function confirmarCajaInicial() {
+  const input = document.getElementById('cajaInicialInput');
+  const monto = parseFloat(input.value) || 0;
+  if (!monto) return;
+
+  // Bloquear el campo — ya no se puede modificar
+  input.disabled = true;
   saveCajaInicialLocal(monto);
   recalcularCajaFinal();
+
   // Guardar en Sheet en segundo plano
   sheetPost({ action: 'guardarCajaInicial', fecha: hoy(), monto });
 }
@@ -594,9 +654,9 @@ function recalcularCajaFinal() {
 
   const movs = getMovimientos().filter(m => m.fecha === hoy());
   // Solo efectivo afecta la caja física
-  const ingresosEfectivo = movs.filter(m => m.tipo === 'ingreso' && m.medio === 'efectivo').reduce((s, m) => s + m.monto, 0);
-  const egresosEfectivo  = movs.filter(m => m.tipo === 'egreso'  && m.medio === 'efectivo').reduce((s, m) => s + m.monto, 0);
-  el.textContent = formatPeso(cajaInicial + ingresosEfectivo - egresosEfectivo);
+  const ingEfectivo = movs.filter(m => m.tipo === 'ingreso' && m.medio === 'efectivo').reduce((s, m) => s + m.monto, 0);
+  const egEfectivo  = movs.filter(m => m.tipo === 'egreso'  && m.medio === 'efectivo').reduce((s, m) => s + m.monto, 0);
+  el.textContent = formatPeso(cajaInicial + ingEfectivo - egEfectivo);
 }
 
 // ====== SHEET SYNC ======
@@ -620,7 +680,7 @@ async function sincronizarDesdeSheet() {
     if (!data.ok) return;
 
     // --- Movimientos ---
-    const locales = getMovimientos();
+    const locales  = getMovimientos();
     const idsLocales = new Set(locales.map(m => String(m.id)));
     const idsSheet   = new Set(data.movimientos.map(m => String(m.id)));
     const nuevos     = data.movimientos.filter(m => !idsLocales.has(String(m.id)));
@@ -634,17 +694,17 @@ async function sincronizarDesdeSheet() {
       renderResumen();
     }
 
-    // --- Caja inicial desde Sheet (solo si no hay valor local de hoy) ---
+    // --- Caja inicial desde Sheet (solo si no hay valor local bloqueado de hoy) ---
     if (data.cajaInicial && data.cajaInicial[hoy()] && !getCajaInicialLocal()) {
       const montoSheet = data.cajaInicial[hoy()];
       saveCajaInicialLocal(montoSheet);
-      document.getElementById('cajaInicialInput').value = montoSheet;
+      const input = document.getElementById('cajaInicialInput');
+      input.value = montoSheet;
+      input.disabled = true;
       recalcularCajaFinal();
     }
 
-  } catch(e) {
-    // silencioso
-  }
+  } catch(e) { /* silencioso */ }
 }
 
 function iniciarPolling() {
@@ -729,6 +789,21 @@ async function eliminar(id) {
   if (mov) await sheetPost({ action: 'eliminar', ...mov });
 }
 
+function limpiarRegistros() {
+  const todos = getMovimientos();
+  if (!todos.length) { showToast('No hay registros para limpiar'); return; }
+  if (!confirm('¿Limpiar todos los registros de la app? El Sheet no se toca.')) return;
+  saveMovimientos([]);
+  // También limpiar caja inicial local
+  localStorage.removeItem('cajaInicial');
+  const input = document.getElementById('cajaInicialInput');
+  input.value = '';
+  input.disabled = false;
+  document.getElementById('cajaFinalValor').textContent = '—';
+  renderMovimientos(); renderResumen();
+  showToast('Registros limpiados ✓');
+}
+
 function renderMovimientos() {
   const movs = getMovimientos().filter(m => m.fecha === hoy()).reverse();
   const el = document.getElementById('movList');
@@ -770,44 +845,68 @@ function renderFecha() {
     `${dias[now.getDay()]} ${now.getDate()} ${meses[now.getMonth()]}<br>${now.getFullYear()}`;
 }
 
+function armarMensajeWA(movs, fecha) {
+  const ingresos = movs.filter(m => m.tipo === 'ingreso');
+  const egresos  = movs.filter(m => m.tipo === 'egreso');
+  const totalI   = ingresos.reduce((s, m) => s + m.monto, 0);
+  const totalE   = egresos.reduce((s, m) => s + m.monto, 0);
+
+  let msg = `🐾 *Resumen del día - ${formatFecha(fecha)}*\n`;
+
+  if (ingresos.length) {
+    msg += `\n✅ *INGRESOS*\n`;
+    // Agrupar por concepto
+    const porConcepto = {};
+    ingresos.forEach(m => {
+      if (!porConcepto[m.concepto]) porConcepto[m.concepto] = {};
+      if (!porConcepto[m.concepto][m.medio]) porConcepto[m.concepto][m.medio] = 0;
+      porConcepto[m.concepto][m.medio] += m.monto;
+    });
+    Object.entries(porConcepto).forEach(([conc, medios]) => {
+      const subtotal = Object.values(medios).reduce((s, v) => s + v, 0);
+      msg += `\n  *${conc}*\n`;
+      Object.entries(medios).forEach(([med, tot]) => {
+        msg += `    · ${med.charAt(0).toUpperCase() + med.slice(1)}: ${formatPeso(tot)}\n`;
+      });
+      msg += `    _Subtotal: ${formatPeso(subtotal)}_\n`;
+    });
+    msg += `\n  *Total ingresos: ${formatPeso(totalI)}*\n`;
+  }
+
+  if (egresos.length) {
+    msg += `\n❌ *EGRESOS*\n`;
+    const porConcepto = {};
+    egresos.forEach(m => {
+      if (!porConcepto[m.concepto]) porConcepto[m.concepto] = {};
+      if (!porConcepto[m.concepto][m.medio]) porConcepto[m.concepto][m.medio] = 0;
+      porConcepto[m.concepto][m.medio] += m.monto;
+    });
+    Object.entries(porConcepto).forEach(([conc, medios]) => {
+      const subtotal = Object.values(medios).reduce((s, v) => s + v, 0);
+      msg += `\n  *${conc}*\n`;
+      Object.entries(medios).forEach(([med, tot]) => {
+        msg += `    · ${med.charAt(0).toUpperCase() + med.slice(1)}: ${formatPeso(tot)}\n`;
+      });
+      msg += `    _Subtotal: ${formatPeso(subtotal)}_\n`;
+    });
+    msg += `\n  *Total egresos: ${formatPeso(totalE)}*\n`;
+  }
+
+  msg += `\n💰 *NETO DEL DÍA: ${formatPeso(totalI - totalE)}*`;
+  return msg;
+}
+
 function enviarWhatsApp() {
   const todos = getMovimientos();
   if (!todos.length) { showToast('No hay movimientos para enviar'); return; }
 
   const fechaEnvio = todos[0].fecha;
   const movs = todos.filter(m => m.fecha === fechaEnvio);
-  const ingresos = movs.filter(m => m.tipo === 'ingreso');
-  const egresos  = movs.filter(m => m.tipo === 'egreso');
-  const totalI   = ingresos.reduce((s, m) => s + m.monto, 0);
-  const totalE   = egresos.reduce((s, m) => s + m.monto, 0);
-
-  const porMedio = {};
-  ingresos.forEach(m => {
-    if (!porMedio[m.medio]) porMedio[m.medio] = 0;
-    porMedio[m.medio] += m.monto;
-  });
-
-  let msg = `🐾 *Resumen del día - ${formatFecha(fechaEnvio)}*\n\n`;
-  if (ingresos.length) {
-    msg += `✅ *INGRESOS*\n`;
-    ingresos.forEach(m => { msg += `  · ${m.concepto} (${m.medio}): ${formatPeso(m.monto)}\n`; });
-    msg += `  *Total: ${formatPeso(totalI)}*\n\n  _Por medio de pago:_\n`;
-    Object.entries(porMedio).forEach(([med, tot]) => {
-      msg += `  · ${med.charAt(0).toUpperCase() + med.slice(1)}: ${formatPeso(tot)}\n`;
-    });
-  }
-  if (egresos.length) {
-    msg += `\n❌ *EGRESOS*\n`;
-    egresos.forEach(m => { msg += `  · ${m.concepto} (${m.medio}): ${formatPeso(m.monto)}\n`; });
-    msg += `  *Total: ${formatPeso(totalE)}*\n`;
-  }
-  msg += `\n💰 *NETO DEL DÍA: ${formatPeso(totalI - totalE)}*`;
+  const msg = armarMensajeWA(movs, fechaEnvio);
 
   window.open(`https://wa.me/${MI_NUMERO}?text=${encodeURIComponent(msg)}`, '_blank');
-
-  saveMovimientos(todos.filter(m => m.fecha !== fechaEnvio));
-  renderMovimientos(); renderResumen();
   showToast('Resumen enviado ✓');
+  // NO borra automático — el empleado usa el botón Limpiar cuando quiera
 }
 
 function showToast(msg) {
@@ -821,10 +920,11 @@ function showToast(msg) {
 renderFecha();
 renderConceptos();
 setTipo('ingreso');
-// Restaurar caja inicial local si existe para hoy
 const cajaGuardada = getCajaInicialLocal();
 if (cajaGuardada > 0) {
-  document.getElementById('cajaInicialInput').value = cajaGuardada;
+  const input = document.getElementById('cajaInicialInput');
+  input.value = cajaGuardada;
+  input.disabled = true;
 }
 sincronizarDesdeSheet().then(() => {
   renderMovimientos();
