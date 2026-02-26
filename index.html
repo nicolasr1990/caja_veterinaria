@@ -14,8 +14,8 @@
     --accent-green: #4ade80;
     --accent-red: #f87171;
     --accent-yellow: #fbbf24;
-    --text: #e8eaf0;
-    --text-muted: #6b7280;
+    --text: #ffffff;
+    --text-muted: #ffffff;
     --radius: 14px;
   }
 
@@ -849,12 +849,9 @@ async function limpiarRegistros() {
   limpiando = true;
   if (pollTimer) clearInterval(pollTimer);
 
-  // Obtener fechas únicas y borrar movimientos + caja inicial de cada fecha del Sheet
+  // Obtener fechas únicas y borrar cada una del Sheet
   const fechas = [...new Set(movs.map(m => m.fecha))];
-  await Promise.all([
-    ...fechas.map(fecha => sheetPost({ action: 'borrarDia', fecha })),
-    ...fechas.map(fecha => sheetPost({ action: 'borrarCajaInicial', fecha }))
-  ]);
+  await Promise.all(fechas.map(fecha => sheetPost({ action: 'borrarDia', fecha })));
 
   // Limpiar UI y localStorage
   resetearUI();
