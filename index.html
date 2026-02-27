@@ -676,7 +676,9 @@ async function sincronizarDesdeSheet() {
     }
 
     // Caja inicial desde Sheet (solo si no hay valor local bloqueado de hoy)
-    if (data.cajaInicial && data.cajaInicial[hoy()] && !getCajaInicialLocal()) {
+    // Caja inicial desde Sheet — solo si no hay valor local Y no fue limpiada hoy
+    const cajaLimpiadaFecha = localStorage.getItem('cajaLimpiadaFecha');
+    if (data.cajaInicial && data.cajaInicial[hoy()] && !getCajaInicialLocal() && cajaLimpiadaFecha !== hoy()) {
       const montoSheet = data.cajaInicial[hoy()];
       saveCajaInicialLocal(montoSheet);
       const input = document.getElementById('cajaInicialInput');
@@ -843,25 +845,40 @@ async function enviarWhatsApp() {
 async function limpiarRegistros() {
   const movs = getMovimientos();
   if (!movs.length) { showToast('No hay registros para limpiar'); return; }
-  if (!confirm('¿Limpiar todos los registros? No te olvides de enviar el resumen.')) return;
+  if (!confirm('¿Limpiar todos los registros? Se borrará de la app y del Sheet.')) return;
 
-  // Pausar polling para que no retraiga datos mientras limpiamos
+  // Pausar polling
   limpiando = true;
   if (pollTimer) clearInterval(pollTimer);
 
-  // Obtener fechas únicas y borrar cada una del Sheet
+  // Borrar movimientos Y caja inicial del Sheet
   const fechas = [...new Set(movs.map(m => m.fecha))];
-  await Promise.all(fechas.map(fecha => sheetPost({ action: 'borrarDia', fecha })));
+  await Promise.all([
+    ...fechas.map(fecha => sheetPost({ action: 'borrarDia', fecha })),
+    ...fechas.map(fecha => sheetPost({ action: 'borrarCajaInicial', fecha }))
+  ]);
 
-  // Limpiar UI y localStorage
-  resetearUI();
+  // Limpiar localStorage completamente
+  localStorage.removeItem('movimientos');
+  localStorage.removeItem('cajaInicial');
+  // Guardar marca de "limpiado hoy" para que el polling no reactive la caja
+  localStorage.setItem('cajaLimpiadaFecha', hoy());
+
+  // Limpiar UI
+  saveMovimientos([]);
+  const input = document.getElementById('cajaInicialInput');
+  input.value = '';
+  input.disabled = false;
+  document.getElementById('cajaFinalValor').textContent = '—';
+  renderMovimientos();
+  renderResumen();
   showToast('Registros borrados ✓');
 
-  // Reanudar polling después de 3 segundos (tiempo para que el Sheet procese)
+  // Reanudar polling después de 5 segundos
   setTimeout(() => {
     limpiando = false;
     iniciarPolling();
-  }, 3000);
+  }, 5000);
 }
 
 function renderMovimientos() {
@@ -916,6 +933,10 @@ function showToast(msg) {
 renderFecha();
 renderConceptos();
 setTipo('ingreso');
+// Si la marca de limpiado es de otro día, borrarla (nuevo día puede cargar caja)
+if (localStorage.getItem('cajaLimpiadaFecha') !== hoy()) {
+  localStorage.removeItem('cajaLimpiadaFecha');
+}
 const cajaGuardada = getCajaInicialLocal();
 if (cajaGuardada > 0) {
   const input = document.getElementById('cajaInicialInput');
