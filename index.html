@@ -590,7 +590,13 @@ let pollTimer = null;
 let limpiando = false; // evita que el polling retraiga datos mientras se limpia
 
 // ====== HELPERS ======
-const hoy = () => new Date().toISOString().split('T')[0];
+const hoy = () => {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
 
 function getMovimientos() {
   return JSON.parse(localStorage.getItem('movimientos') || '[]');
@@ -675,16 +681,24 @@ async function sincronizarDesdeSheet() {
       renderResumen();
     }
 
-    // Caja inicial desde Sheet (solo si no hay valor local bloqueado de hoy)
-    // Caja inicial desde Sheet — solo si no hay valor local Y no fue limpiada hoy
-    const cajaLimpiadaFecha = localStorage.getItem('cajaLimpiadaFecha');
-    if (data.cajaInicial && data.cajaInicial[hoy()] && !getCajaInicialLocal() && cajaLimpiadaFecha !== hoy()) {
-      const montoSheet = data.cajaInicial[hoy()];
-      saveCajaInicialLocal(montoSheet);
+    // Caja inicial desde Sheet
+    const cajaEnSheet = data.cajaInicial && data.cajaInicial[hoy()];
+    const cajaLocal = getCajaInicialLocal();
+
+    if (cajaEnSheet && !cajaLocal) {
+      // Otro dispositivo inició caja → traerla y bloquear
+      saveCajaInicialLocal(cajaEnSheet);
       const input = document.getElementById('cajaInicialInput');
-      input.value = montoSheet;
+      input.value = cajaEnSheet;
       input.disabled = true;
       recalcularCajaFinal();
+    } else if (!cajaEnSheet && cajaLocal) {
+      // Otro dispositivo limpió la caja → borrarla acá también
+      localStorage.removeItem('cajaInicial');
+      const input = document.getElementById('cajaInicialInput');
+      input.value = '';
+      input.disabled = false;
+      document.getElementById('cajaFinalValor').textContent = '—';
     }
   } catch(e) { /* silencioso */ }
 }
@@ -847,38 +861,26 @@ async function limpiarRegistros() {
   if (!movs.length) { showToast('No hay registros para limpiar'); return; }
   if (!confirm('¿Limpiar todos los registros? Se borrará de la app y del Sheet.')) return;
 
-  // Pausar polling
+  // Pausar polling para que no retraiga datos mientras limpiamos
   limpiando = true;
   if (pollTimer) clearInterval(pollTimer);
 
-  // Borrar movimientos Y caja inicial del Sheet
+  // Obtener fechas únicas y borrar movimientos + caja inicial del Sheet
   const fechas = [...new Set(movs.map(m => m.fecha))];
   await Promise.all([
     ...fechas.map(fecha => sheetPost({ action: 'borrarDia', fecha })),
     ...fechas.map(fecha => sheetPost({ action: 'borrarCajaInicial', fecha }))
   ]);
 
-  // Limpiar localStorage completamente
-  localStorage.removeItem('movimientos');
-  localStorage.removeItem('cajaInicial');
-  // Guardar marca de "limpiado hoy" para que el polling no reactive la caja
-  localStorage.setItem('cajaLimpiadaFecha', hoy());
-
-  // Limpiar UI
-  saveMovimientos([]);
-  const input = document.getElementById('cajaInicialInput');
-  input.value = '';
-  input.disabled = false;
-  document.getElementById('cajaFinalValor').textContent = '—';
-  renderMovimientos();
-  renderResumen();
+  // Limpiar UI y localStorage
+  resetearUI();
   showToast('Registros borrados ✓');
 
-  // Reanudar polling después de 5 segundos
+  // Reanudar polling después de 3 segundos (tiempo para que el Sheet procese)
   setTimeout(() => {
     limpiando = false;
     iniciarPolling();
-  }, 5000);
+  }, 3000);
 }
 
 function renderMovimientos() {
@@ -933,10 +935,6 @@ function showToast(msg) {
 renderFecha();
 renderConceptos();
 setTipo('ingreso');
-// Si la marca de limpiado es de otro día, borrarla (nuevo día puede cargar caja)
-if (localStorage.getItem('cajaLimpiadaFecha') !== hoy()) {
-  localStorage.removeItem('cajaLimpiadaFecha');
-}
 const cajaGuardada = getCajaInicialLocal();
 if (cajaGuardada > 0) {
   const input = document.getElementById('cajaInicialInput');
