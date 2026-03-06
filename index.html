@@ -661,39 +661,51 @@ async function sheetPost(data) {
 }
 
 async function sincronizarDesdeSheet() {
-  if (limpiando) return; // no sincronizar mientras se está limpiando
+  if (limpiando) return;
   try {
     const res = await fetch(SHEET_URL + '?t=' + Date.now());
     const data = await res.json();
     if (!data.ok) return;
 
-    const locales    = getMovimientos();
+    let locales = getMovimientos();
     const idsLocales = new Set(locales.map(m => String(m.id)));
-    const idsSheet   = new Set(data.movimientos.map(m => String(m.id)));
-    const nuevos     = data.movimientos.filter(m => !idsLocales.has(String(m.id)));
-    const filtrados  = locales.filter(m => idsSheet.has(String(m.id)));
+    let hubocambios = false;
 
-    if (nuevos.length > 0 || filtrados.length !== locales.length) {
-      const merged = [...filtrados, ...nuevos];
+    // 1. Aplicar borrados explícitos (borrado individual desde otro dispositivo)
+    if (data.borrados && data.borrados.length > 0) {
+      const idsBorrados = new Set(data.borrados.map(String));
+      const filtrados = locales.filter(m => !idsBorrados.has(String(m.id)));
+      if (filtrados.length !== locales.length) {
+        locales = filtrados;
+        saveMovimientos(locales);
+        hubocambios = true;
+      }
+    }
+
+    // 2. Agregar nuevos del Sheet — nunca borrar locales por ausencia en Sheet
+    const nuevos = data.movimientos.filter(m => !idsLocales.has(String(m.id)));
+    if (nuevos.length > 0) {
+      const merged = [...locales, ...nuevos];
       merged.sort((a, b) => (a.fecha + a.hora).localeCompare(b.fecha + b.hora));
       saveMovimientos(merged);
+      hubocambios = true;
+    }
+
+    if (hubocambios) {
       renderMovimientos();
       renderResumen();
     }
 
-    // Caja inicial desde Sheet
+    // 3. Caja inicial
     const cajaEnSheet = data.cajaInicial && data.cajaInicial[hoy()];
     const cajaLocal = getCajaInicialLocal();
-
     if (cajaEnSheet && !cajaLocal) {
-      // Otro dispositivo inició caja → traerla y bloquear
       saveCajaInicialLocal(cajaEnSheet);
       const input = document.getElementById('cajaInicialInput');
       input.value = cajaEnSheet;
       input.disabled = true;
       recalcularCajaFinal();
     } else if (!cajaEnSheet && cajaLocal) {
-      // Otro dispositivo limpió la caja → borrarla acá también
       localStorage.removeItem('cajaInicial');
       const input = document.getElementById('cajaInicialInput');
       input.value = '';
@@ -857,26 +869,44 @@ async function enviarWhatsApp() {
 }
 
 async function limpiarRegistros() {
-  const movs = getMovimientos();
-  if (!movs.length) { showToast('No hay registros para limpiar'); return; }
   if (!confirm('¿Limpiar todos los registros? Se borrará de la app y del Sheet.')) return;
 
-  // Pausar polling para que no retraiga datos mientras limpiamos
   limpiando = true;
   if (pollTimer) clearInterval(pollTimer);
 
-  // Obtener fechas únicas y borrar movimientos + caja inicial del Sheet
-  const fechas = [...new Set(movs.map(m => m.fecha))];
+  // Obtener fechas a borrar: combinar localStorage + Sheet
+  const movsLocales = getMovimientos();
+  const fechasLocales = new Set(movsLocales.map(m => m.fecha));
+
+  // Consultar el Sheet para obtener fechas que puedan no estar en local
+  let fechasSheet = new Set();
+  try {
+    const res = await fetch(SHEET_URL + '?t=' + Date.now());
+    const data = await res.json();
+    if (data.ok) {
+      data.movimientos.forEach(m => fechasSheet.add(m.fecha));
+    }
+  } catch(e) { /* continuar igual */ }
+
+  const todasFechas = [...new Set([...fechasLocales, ...fechasSheet])];
+
+  if (todasFechas.length === 0) {
+    showToast('No hay registros para limpiar');
+    limpiando = false;
+    iniciarPolling();
+    return;
+  }
+
+  // Borrar del Sheet
   await Promise.all([
-    ...fechas.map(fecha => sheetPost({ action: 'borrarDia', fecha })),
-    ...fechas.map(fecha => sheetPost({ action: 'borrarCajaInicial', fecha }))
+    ...todasFechas.map(fecha => sheetPost({ action: 'borrarDia', fecha })),
+    ...todasFechas.map(fecha => sheetPost({ action: 'borrarCajaInicial', fecha }))
   ]);
 
   // Limpiar UI y localStorage
   resetearUI();
   showToast('Registros borrados ✓');
 
-  // Reanudar polling después de 3 segundos (tiempo para que el Sheet procese)
   setTimeout(() => {
     limpiando = false;
     iniciarPolling();
