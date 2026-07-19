@@ -151,48 +151,97 @@
     white-space: nowrap;
     flex-shrink: 0;
   }
-  .bottom-bar {
+  .nav-bar {
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
-    padding: 12px 20px;
+    padding: 10px 20px calc(10px + env(safe-area-inset-bottom));
     background: var(--bg);
     border-top: 1px solid var(--border);
     display: flex;
     gap: 8px;
+    z-index: 10;
   }
-  .btn-whatsapp {
-    flex: 2;
-    padding: 14px;
-    border-radius: var(--radius);
-    border: 1px solid #25d366;
-    background: rgba(37, 211, 102, 0.1);
-    color: #25d366;
-    font-family: 'DM Mono', monospace;
-    font-size: 13px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    transition: all 0.2s;
-  }
-  .btn-whatsapp:active { background: rgba(37, 211, 102, 0.2); }
-  .btn-limpiar {
+  .nav-btn {
     flex: 1;
-    padding: 14px;
+    padding: 12px;
     border-radius: var(--radius);
     border: 1px solid var(--border);
     background: var(--surface);
     color: var(--text-muted);
     font-family: 'DM Mono', monospace;
-    font-size: 11px;
+    font-size: 12px;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
     transition: all 0.2s;
-    text-align: center;
+    letter-spacing: 0.04em;
   }
-  .btn-limpiar:active { background: var(--surface2); }
+  .nav-btn.active {
+    background: rgba(74, 222, 128, 0.12);
+    border-color: var(--accent-green);
+    color: var(--accent-green);
+  }
+  .view { display: none; }
+  .view.active { display: block; }
+
+  .precio-search {
+    padding: 16px 20px 8px;
+  }
+  .precio-search input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    outline: none;
+  }
+  .precio-search input:focus { border-color: var(--accent-yellow); }
+  .precio-meta {
+    padding: 0 20px 8px;
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+  }
+  .precio-list {
+    padding: 0 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .precio-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+  .precio-nombre {
+    font-size: 12px;
+    color: var(--text);
+    line-height: 1.3;
+  }
+  .precio-codigo {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .precio-valor {
+    font-size: 15px;
+    font-weight: 600;
+    font-family: 'Fraunces', serif;
+    color: var(--accent-green);
+    white-space: nowrap;
+  }
 
   .tabs {
     display: flex;
@@ -419,37 +468,6 @@
     line-height: 1.8;
   }
 
-  .bottom-bar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    padding: 12px 20px;
-    background: var(--bg);
-    border-top: 1px solid var(--border);
-  }
-
-  .btn-whatsapp {
-    width: 100%;
-    padding: 14px;
-    border-radius: var(--radius);
-    border: 1px solid #25d366;
-    background: rgba(37, 211, 102, 0.1);
-    color: #25d366;
-    font-family: 'DM Mono', monospace;
-    font-size: 13px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    transition: all 0.2s;
-  }
-
-  .btn-whatsapp:active {
-    background: rgba(37, 211, 102, 0.2);
-  }
-
   .toast {
     position: fixed;
     top: 20px;
@@ -500,80 +518,88 @@
   </div>
 </header>
 
-<div class="resumen-strip">
-  <div class="resumen-item">
-    <div class="resumen-label">Ingresos</div>
-    <div class="resumen-valor verde" id="totalIngresos">$0</div>
-  </div>
-  <div class="resumen-item">
-    <div class="resumen-label">Egresos</div>
-    <div class="resumen-valor rojo" id="totalEgresos">$0</div>
-  </div>
-  <div class="resumen-item">
-    <div class="resumen-label">Neto</div>
-    <div class="resumen-valor amarillo" id="totalNeto">$0</div>
-  </div>
-</div>
+<div class="view active" id="viewCaja">
 
-<div class="caja-inicial-bar">
-  <span class="caja-inicial-label">Caja inicial</span>
-  <input type="number" class="caja-inicial-input" id="cajaInicialInput" placeholder="$0" inputmode="numeric"
-    onblur="confirmarCajaInicial()" onkeydown="if(event.key==='Enter'){this.blur()}">
-  <span class="caja-final-label">En caja</span>
-  <span class="caja-final-valor" id="cajaFinalValor">—</span>
-</div>
-
-<div class="tabs">
-  <button class="tab active-ingreso" id="tabIngreso" onclick="setTipo('ingreso')">+ Ingreso</button>
-  <button class="tab" id="tabEgreso" onclick="setTipo('egreso')">− Egreso</button>
-</div>
-
-<div class="form-area">
-  <div class="form-card">
-
-    <div class="field" id="fieldConcepto">
-      <label>Concepto</label>
-      <div class="options-grid cols-2" id="conceptoOptions"></div>
+  <div class="resumen-strip">
+    <div class="resumen-item">
+      <div class="resumen-label">Ingresos</div>
+      <div class="resumen-valor verde" id="totalIngresos">$0</div>
     </div>
+    <div class="resumen-item">
+      <div class="resumen-label">Egresos</div>
+      <div class="resumen-valor rojo" id="totalEgresos">$0</div>
+    </div>
+    <div class="resumen-item">
+      <div class="resumen-label">Neto</div>
+      <div class="resumen-valor amarillo" id="totalNeto">$0</div>
+    </div>
+  </div>
 
-    <div class="field" id="fieldMedios">
-      <label>Medio de pago</label>
-      <div class="options-grid cols-3" id="mediosGrid">
-        <button class="opt-btn" id="medio-efectivo" onclick="setMedio('efectivo')">Efectivo</button>
-        <button class="opt-btn" id="medio-transferencia" onclick="setMedio('transferencia')">Transfer.</button>
-        <button class="opt-btn" id="medio-tarjeta" onclick="setMedio('tarjeta')">Tarjeta</button>
+  <div class="caja-inicial-bar">
+    <span class="caja-inicial-label">Caja inicial</span>
+    <input type="number" class="caja-inicial-input" id="cajaInicialInput" placeholder="$0" inputmode="numeric"
+      onblur="confirmarCajaInicial()" onkeydown="if(event.key==='Enter'){this.blur()}">
+    <span class="caja-final-label">En caja</span>
+    <span class="caja-final-valor" id="cajaFinalValor">—</span>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active-ingreso" id="tabIngreso" onclick="setTipo('ingreso')">+ Ingreso</button>
+    <button class="tab" id="tabEgreso" onclick="setTipo('egreso')">− Egreso</button>
+  </div>
+
+  <div class="form-area">
+    <div class="form-card">
+
+      <div class="field" id="fieldConcepto">
+        <label>Concepto</label>
+        <div class="options-grid cols-2" id="conceptoOptions"></div>
       </div>
-    </div>
 
-    <div class="field">
-      <label>Monto</label>
-      <input type="number" class="monto-input" id="montoInput" placeholder="$ 0" inputmode="numeric">
-    </div>
+      <div class="field" id="fieldMedios">
+        <label>Medio de pago</label>
+        <div class="options-grid cols-3" id="mediosGrid">
+          <button class="opt-btn" id="medio-efectivo" onclick="setMedio('efectivo')">Efectivo</button>
+          <button class="opt-btn" id="medio-transferencia" onclick="setMedio('transferencia')">Transfer.</button>
+          <button class="opt-btn" id="medio-tarjeta" onclick="setMedio('tarjeta')">Tarjeta</button>
+        </div>
+      </div>
 
-    <button class="btn-agregar ingreso" id="btnAgregar" onclick="agregar()">AGREGAR INGRESO</button>
+      <div class="field">
+        <label>Monto</label>
+        <input type="number" class="monto-input" id="montoInput" placeholder="$ 0" inputmode="numeric">
+      </div>
+
+      <button class="btn-agregar ingreso" id="btnAgregar" onclick="agregar()">AGREGAR INGRESO</button>
+    </div>
   </div>
+
+  <div class="divider"></div>
+
+  <div class="movimientos-area">
+    <div class="section-title">Movimientos de hoy</div>
+    <div class="mov-list" id="movList"></div>
+  </div>
+
 </div>
 
-<div class="divider"></div>
-
-<div class="movimientos-area">
-  <div class="section-title">Movimientos de hoy</div>
-  <div class="mov-list" id="movList"></div>
+<div class="view" id="viewPrecios">
+  <div class="precio-search">
+    <input type="text" id="precioBuscar" placeholder="Buscar por nombre o código..." oninput="renderPrecios()">
+  </div>
+  <div class="precio-meta" id="precioMeta">Cargando...</div>
+  <div class="precio-list" id="precioList"></div>
 </div>
 
-<div class="bottom-bar">
-  <button class="btn-whatsapp" onclick="enviarWhatsApp()">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="#25d366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-    Enviar resumen
-  </button>
-  <button class="btn-limpiar" onclick="limpiarRegistros()">🗑 Limpiar</button>
+<div class="nav-bar">
+  <button class="nav-btn active" id="navCaja" onclick="setVista('caja')">💰 Caja</button>
+  <button class="nav-btn" id="navPrecios" onclick="setVista('precios')">📦 Precios</button>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
 // ====== CONFIG ======
-const MI_NUMERO = '5493772637058';
 const SHEET_URL = 'https://script.google.com/macros/s/AKfycbxPn9ZdpBpqIWVtTve-zhtyfX2pr11qx5oSwYP4iTQsSncDGRqPUznGSJLd_-o201g/exec';
 const POLL_INTERVAL = 10000;
 
@@ -808,111 +834,6 @@ function resetearUI() {
   renderResumen();
 }
 
-function armarMensajeWA(movs, fecha) {
-  const ingresos = movs.filter(m => m.tipo === 'ingreso');
-  const egresos  = movs.filter(m => m.tipo === 'egreso');
-  const totalI   = ingresos.reduce((s, m) => s + m.monto, 0);
-  const totalE   = egresos.reduce((s, m) => s + m.monto, 0);
-
-  let msg = `🐾 *Resumen del día - ${formatFecha(fecha)}*\n`;
-
-  if (ingresos.length) {
-    msg += `\n✅ *INGRESOS*\n`;
-    const porConcepto = {};
-    ingresos.forEach(m => {
-      if (!porConcepto[m.concepto]) porConcepto[m.concepto] = {};
-      if (!porConcepto[m.concepto][m.medio]) porConcepto[m.concepto][m.medio] = 0;
-      porConcepto[m.concepto][m.medio] += m.monto;
-    });
-    Object.entries(porConcepto).forEach(([conc, medios]) => {
-      const subtotal = Object.values(medios).reduce((s, v) => s + v, 0);
-      msg += `\n  *${conc}*\n`;
-      Object.entries(medios).forEach(([med, tot]) => {
-        msg += `    · ${med.charAt(0).toUpperCase() + med.slice(1)}: ${formatPeso(tot)}\n`;
-      });
-      msg += `    _Subtotal: ${formatPeso(subtotal)}_\n`;
-    });
-    msg += `\n  *Total ingresos: ${formatPeso(totalI)}*\n`;
-  }
-
-  if (egresos.length) {
-    msg += `\n❌ *EGRESOS*\n`;
-    const porConcepto = {};
-    egresos.forEach(m => {
-      if (!porConcepto[m.concepto]) porConcepto[m.concepto] = {};
-      if (!porConcepto[m.concepto][m.medio]) porConcepto[m.concepto][m.medio] = 0;
-      porConcepto[m.concepto][m.medio] += m.monto;
-    });
-    Object.entries(porConcepto).forEach(([conc, medios]) => {
-      const subtotal = Object.values(medios).reduce((s, v) => s + v, 0);
-      msg += `\n  *${conc}*\n`;
-      Object.entries(medios).forEach(([med, tot]) => {
-        msg += `    · ${med.charAt(0).toUpperCase() + med.slice(1)}: ${formatPeso(tot)}\n`;
-      });
-      msg += `    _Subtotal: ${formatPeso(subtotal)}_\n`;
-    });
-    msg += `\n  *Total egresos: ${formatPeso(totalE)}*\n`;
-  }
-
-  msg += `\n💰 *NETO DEL DÍA: ${formatPeso(totalI - totalE)}*`;
-  return msg;
-}
-
-async function enviarWhatsApp() {
-  // Siempre envía los movimientos de HOY únicamente
-  const movs = getMovimientos().filter(m => m.fecha === hoy());
-  if (!movs.length) { showToast('No hay movimientos hoy para enviar'); return; }
-
-  const msg = armarMensajeWA(movs, hoy());
-  window.open(`https://wa.me/${MI_NUMERO}?text=${encodeURIComponent(msg)}`, '_blank');
-  showToast('Resumen enviado ✓');
-}
-
-async function limpiarRegistros() {
-  if (!confirm('¿Limpiar todos los registros? Se borrará de la app y del Sheet.')) return;
-
-  limpiando = true;
-  if (pollTimer) clearInterval(pollTimer);
-
-  // Obtener fechas a borrar: combinar localStorage + Sheet
-  const movsLocales = getMovimientos();
-  const fechasLocales = new Set(movsLocales.map(m => m.fecha));
-
-  // Consultar el Sheet para obtener fechas que puedan no estar en local
-  let fechasSheet = new Set();
-  try {
-    const res = await fetch(SHEET_URL + '?t=' + Date.now());
-    const data = await res.json();
-    if (data.ok) {
-      data.movimientos.forEach(m => fechasSheet.add(m.fecha));
-    }
-  } catch(e) { /* continuar igual */ }
-
-  const todasFechas = [...new Set([...fechasLocales, ...fechasSheet])];
-
-  if (todasFechas.length === 0) {
-    showToast('No hay registros para limpiar');
-    limpiando = false;
-    iniciarPolling();
-    return;
-  }
-
-  // Borrar del Sheet
-  await Promise.all([
-    ...todasFechas.map(fecha => sheetPost({ action: 'borrarDia', fecha })),
-    ...todasFechas.map(fecha => sheetPost({ action: 'borrarCajaInicial', fecha }))
-  ]);
-
-  // Limpiar UI y localStorage
-  resetearUI();
-  showToast('Registros borrados ✓');
-
-  setTimeout(() => {
-    limpiando = false;
-    iniciarPolling();
-  }, 3000);
-}
-
 function renderMovimientos() {
   const movs = getMovimientos().filter(m => m.fecha === hoy()).reverse();
   const el = document.getElementById('movList');
@@ -959,6 +880,85 @@ function showToast(msg) {
   t.textContent = msg;
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ====== NAVEGACIÓN ======
+function setVista(v) {
+  document.getElementById('viewCaja').className   = 'view' + (v === 'caja'    ? ' active' : '');
+  document.getElementById('viewPrecios').className = 'view' + (v === 'precios' ? ' active' : '');
+  document.getElementById('navCaja').className    = 'nav-btn' + (v === 'caja'    ? ' active' : '');
+  document.getElementById('navPrecios').className = 'nav-btn' + (v === 'precios' ? ' active' : '');
+  if (v === 'precios') cargarPrecios();
+}
+
+// ====== PRECIOS DE PRODUCTOS ======
+const PRECIOS_CACHE_KEY = 'precios_cache';
+const PRECIOS_CACHE_MS  = 5 * 60 * 1000; // 5 min
+
+function getPreciosCache() {
+  try { return JSON.parse(localStorage.getItem(PRECIOS_CACHE_KEY) || 'null'); }
+  catch(e) { return null; }
+}
+function savePreciosCache(articulos) {
+  localStorage.setItem(PRECIOS_CACHE_KEY, JSON.stringify({ ts: Date.now(), articulos }));
+}
+
+async function cargarPrecios(force) {
+  const cache = getPreciosCache();
+  if (cache && !force && (Date.now() - cache.ts) < PRECIOS_CACHE_MS) {
+    renderPrecios();
+    return;
+  }
+  document.getElementById('precioMeta').textContent = 'Actualizando...';
+  try {
+    const res = await fetch(SHEET_URL + '?tipo=precios&t=' + Date.now());
+    const data = await res.json();
+    if (data.ok) {
+      savePreciosCache(data.articulos);
+    }
+  } catch(e) { /* si falla, se usa lo que haya en cache */ }
+  renderPrecios();
+}
+
+function renderPrecios() {
+  const cache = getPreciosCache();
+  const meta = document.getElementById('precioMeta');
+  const list = document.getElementById('precioList');
+
+  if (!cache || !cache.articulos || !cache.articulos.length) {
+    meta.textContent = 'Sin datos todavía';
+    list.innerHTML = '<div class="empty-state">No hay precios cargados aún.</div>';
+    return;
+  }
+
+  const actualizado = new Date(cache.ts);
+  meta.textContent = 'Actualizado ' + actualizado.toLocaleDateString('es-AR') + ' ' +
+    String(actualizado.getHours()).padStart(2,'0') + ':' + String(actualizado.getMinutes()).padStart(2,'0');
+
+  const q = (document.getElementById('precioBuscar').value || '').trim().toLowerCase();
+  let items = cache.articulos;
+  if (q) {
+    items = items.filter(a =>
+      (a.nombre || '').toLowerCase().includes(q) ||
+      (a.codigo || '').toLowerCase().includes(q)
+    );
+  }
+  items = items.slice(0, 100); // límite de render, la búsqueda ya filtra
+
+  if (!items.length) {
+    list.innerHTML = '<div class="empty-state">Sin resultados.</div>';
+    return;
+  }
+
+  list.innerHTML = items.map(a => `
+    <div class="precio-item">
+      <div>
+        <div class="precio-nombre">${a.nombre}</div>
+        ${a.codigo ? `<div class="precio-codigo">${a.codigo}</div>` : ''}
+      </div>
+      <div class="precio-valor">${formatPeso(a.precio)}</div>
+    </div>
+  `).join('');
 }
 
 // ====== BOOTSTRAP ======
