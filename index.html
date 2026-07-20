@@ -1,981 +1,1118 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Caja del Día</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,600;1,300&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg: #0f1117;
-    --surface: #1a1d27;
-    --surface2: #22263a;
-    --border: #2e3347;
-    --accent-green: #4ade80;
-    --accent-red: #f87171;
-    --accent-yellow: #fbbf24;
-    --text: #ffffff;
-    --text-muted: #ffffff;
-    --radius: 14px;
-  }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Caja del Día</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,600;1,300&family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet" />
+  <style>
+    /* ===== ROOTS CLAYMORE ===== */
+    :root {
+      --clay-bg: #f5efe6;
+      --clay-surface: #e8dfd3;
+      --clay-surface2: #ddd2c4;
+      --clay-border: #cbbcaa;
+      --clay-shadow: rgba(120, 100, 80, 0.20);
+      --clay-text: #2d241c;
+      --clay-muted: #6b5d4f;
+      --clay-green: #4b8b6b;
+      --clay-red: #b55a5a;
+      --clay-yellow: #c49b3f;
+      --clay-radius: 20px;
+      --clay-puff: 6px 6px 12px rgba(120, 100, 80, 0.12), -4px -4px 10px rgba(255, 245, 235, 0.8);
+      --clay-puff-inset: inset 3px 3px 8px rgba(120, 100, 80, 0.10), inset -3px -3px 8px rgba(255, 245, 235, 0.7);
+      --clay-puff-btn: 4px 4px 10px rgba(120, 100, 80, 0.15), -3px -3px 8px rgba(255, 245, 235, 0.9);
+      --clay-puff-active: inset 4px 4px 10px rgba(120, 100, 80, 0.20), inset -3px -3px 8px rgba(255, 245, 235, 0.6);
+    }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-  body {
-    font-family: 'DM Mono', monospace;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    padding: 0 0 100px 0;
-  }
+    body {
+      font-family: 'Inter', 'DM Mono', monospace;
+      background: var(--clay-bg);
+      color: var(--clay-text);
+      min-height: 100vh;
+      padding: 0 0 100px 0;
+    }
 
-  header {
-    padding: 24px 20px 16px;
-    border-bottom: 1px solid var(--border);
-    position: sticky;
-    top: 0;
-    background: var(--bg);
-    z-index: 10;
-  }
+    /* ——— fuentes específicas ——— */
+    .app-title {
+      font-family: 'Fraunces', serif;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+    .app-subtitle,
+    .fecha-badge,
+    .resumen-label,
+    .caja-inicial-label,
+    .caja-final-label,
+    .tab,
+    .nav-btn,
+    .field label,
+    .section-title,
+    .precio-meta,
+    .precio-codigo,
+    .mov-meta,
+    .mov-del,
+    .btn-agregar,
+    .opt-btn,
+    .resumen-valor,
+    .caja-final-valor,
+    .precio-valor,
+    .mov-monto,
+    .monto-input,
+    .caja-inicial-input {
+      font-family: 'Inter', 'DM Mono', monospace;
+    }
 
-  .header-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-  }
+    /* ===== ELEMENTOS CLAYMORE ===== */
+    header {
+      padding: 24px 20px 16px;
+      border-bottom: 2px solid var(--clay-border);
+      background: var(--clay-bg);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      box-shadow: var(--clay-puff);
+    }
 
-  .app-title {
-    font-family: 'Fraunces', serif;
-    font-size: 22px;
-    font-weight: 600;
-    color: var(--text);
-    line-height: 1;
-  }
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
 
-  .app-subtitle {
-    font-size: 11px;
-    color: var(--text-muted);
-    margin-top: 4px;
-    letter-spacing: 0.05em;
-  }
+    .app-title {
+      font-size: 24px;
+      color: var(--clay-text);
+      line-height: 1.1;
+    }
+    .app-subtitle {
+      font-size: 12px;
+      color: var(--clay-muted);
+      letter-spacing: 0.04em;
+      margin-top: 4px;
+      font-weight: 500;
+    }
 
-  .fecha-badge {
-    font-size: 11px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 6px 10px;
-    color: var(--text-muted);
-    text-align: right;
-    line-height: 1.4;
-  }
+    .fecha-badge {
+      font-size: 12px;
+      background: var(--clay-surface);
+      border: 2px solid var(--clay-border);
+      border-radius: var(--clay-radius);
+      padding: 8px 14px;
+      color: var(--clay-text);
+      text-align: right;
+      line-height: 1.4;
+      box-shadow: var(--clay-puff-btn);
+      font-weight: 500;
+    }
 
-  .resumen-strip {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 1px;
-    background: var(--border);
-    margin: 0;
-  }
+    .resumen-strip {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      margin: 12px 20px 8px;
+    }
 
-  .resumen-item {
-    background: var(--surface);
-    padding: 14px 16px;
-    text-align: center;
-  }
+    .resumen-item {
+      background: var(--clay-surface);
+      border: 2px solid var(--clay-border);
+      border-radius: var(--clay-radius);
+      padding: 16px 12px;
+      text-align: center;
+      box-shadow: var(--clay-puff-btn);
+    }
 
-  .resumen-label {
-    font-size: 10px;
-    color: var(--text-muted);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    margin-bottom: 4px;
-  }
+    .resumen-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--clay-muted);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
 
-  .resumen-valor {
-    font-size: 18px;
-    font-weight: 600;
-    font-family: 'Fraunces', serif;
-  }
+    .resumen-valor {
+      font-size: 22px;
+      font-weight: 700;
+      font-family: 'Inter', sans-serif;
+      letter-spacing: -0.02em;
+    }
+    .resumen-valor.verde {
+      color: var(--clay-green);
+    }
+    .resumen-valor.rojo {
+      color: var(--clay-red);
+    }
+    .resumen-valor.amarillo {
+      color: var(--clay-yellow);
+    }
 
-  .resumen-valor.verde { color: var(--accent-green); }
-  .resumen-valor.rojo { color: var(--accent-red); }
-  .resumen-valor.amarillo { color: var(--accent-yellow); }
+    .caja-inicial-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 20px;
+      margin: 8px 20px 0;
+      background: var(--clay-surface);
+      border: 2px solid var(--clay-border);
+      border-radius: var(--clay-radius);
+      box-shadow: var(--clay-puff-btn);
+      flex-wrap: wrap;
+    }
 
-  .caja-inicial-bar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 20px;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-  }
-  .caja-inicial-label {
-    font-size: 10px;
-    color: var(--text-muted);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-  .caja-inicial-input {
-    flex: 1;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 7px 12px;
-    color: var(--text);
-    font-family: 'Fraunces', serif;
-    font-size: 16px;
-    font-weight: 600;
-    text-align: right;
-    outline: none;
-    transition: border-color 0.2s;
-    min-width: 0;
-  }
-  .caja-inicial-input:focus { border-color: var(--accent-yellow); }
-  .caja-inicial-input:disabled { opacity: 0.6; cursor: not-allowed; }
-  .caja-final-label {
-    font-size: 10px;
-    color: var(--text-muted);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-  .caja-final-valor {
-    font-family: 'Fraunces', serif;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--accent-yellow);
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-  .nav-bar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    padding: 10px 20px calc(10px + env(safe-area-inset-bottom));
-    background: var(--bg);
-    border-top: 1px solid var(--border);
-    display: flex;
-    gap: 8px;
-    z-index: 10;
-  }
-  .nav-btn {
-    flex: 1;
-    padding: 12px;
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    background: var(--surface);
-    color: var(--text-muted);
-    font-family: 'DM Mono', monospace;
-    font-size: 12px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    transition: all 0.2s;
-    letter-spacing: 0.04em;
-  }
-  .nav-btn.active {
-    background: rgba(74, 222, 128, 0.12);
-    border-color: var(--accent-green);
-    color: var(--accent-green);
-  }
-  .view { display: none; }
-  .view.active { display: block; }
+    .caja-inicial-label,
+    .caja-final-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--clay-muted);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
 
-  .precio-search {
-    padding: 16px 20px 8px;
-  }
-  .precio-search input {
-    width: 100%;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 12px 14px;
-    color: var(--text);
-    font-family: 'DM Mono', monospace;
-    font-size: 14px;
-    outline: none;
-  }
-  .precio-search input:focus { border-color: var(--accent-yellow); }
-  .precio-meta {
-    padding: 0 20px 8px;
-    font-size: 10px;
-    color: var(--text-muted);
-    letter-spacing: 0.05em;
-  }
-  .precio-list {
-    padding: 0 20px 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-  .precio-item {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 10px 14px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
-  }
-  .precio-nombre {
-    font-size: 12px;
-    color: var(--text);
-    line-height: 1.3;
-  }
-  .precio-codigo {
-    font-size: 10px;
-    color: var(--text-muted);
-    margin-top: 2px;
-  }
-  .precio-valor {
-    font-size: 15px;
-    font-weight: 600;
-    font-family: 'Fraunces', serif;
-    color: var(--accent-green);
-    white-space: nowrap;
-  }
+    .caja-inicial-input {
+      flex: 1;
+      min-width: 80px;
+      background: var(--clay-bg);
+      border: 2px solid var(--clay-border);
+      border-radius: 14px;
+      padding: 8px 14px;
+      color: var(--clay-text);
+      font-size: 18px;
+      font-weight: 600;
+      text-align: right;
+      outline: none;
+      box-shadow: var(--clay-puff-inset);
+      transition: border-color 0.2s;
+    }
+    .caja-inicial-input:focus {
+      border-color: var(--clay-yellow);
+    }
+    .caja-inicial-input:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
 
-  .tabs {
-    display: flex;
-    padding: 16px 20px 0;
-    gap: 8px;
-  }
+    .caja-final-valor {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--clay-yellow);
+      white-space: nowrap;
+      flex-shrink: 0;
+      font-family: 'Inter', sans-serif;
+      letter-spacing: -0.02em;
+    }
 
-  .tab {
-    flex: 1;
-    padding: 10px;
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    background: var(--surface);
-    color: var(--text-muted);
-    font-family: 'DM Mono', monospace;
-    font-size: 12px;
-    cursor: pointer;
-    transition: all 0.2s;
-    text-align: center;
-  }
+    .tabs {
+      display: flex;
+      padding: 16px 20px 0;
+      gap: 10px;
+    }
 
-  .tab.active-ingreso {
-    background: rgba(74, 222, 128, 0.12);
-    border-color: var(--accent-green);
-    color: var(--accent-green);
-  }
+    .tab {
+      flex: 1;
+      padding: 12px 8px;
+      border-radius: var(--clay-radius);
+      border: 2px solid var(--clay-border);
+      background: var(--clay-surface);
+      color: var(--clay-muted);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+      box-shadow: var(--clay-puff-btn);
+      letter-spacing: 0.03em;
+    }
+    .tab:active {
+      box-shadow: var(--clay-puff-active);
+    }
 
-  .tab.active-egreso {
-    background: rgba(248, 113, 113, 0.12);
-    border-color: var(--accent-red);
-    color: var(--accent-red);
-  }
+    .tab.active-ingreso {
+      background: rgba(75, 139, 107, 0.15);
+      border-color: var(--clay-green);
+      color: var(--clay-green);
+      box-shadow: inset 0 0 0 2px rgba(75, 139, 107, 0.15), var(--clay-puff-btn);
+    }
+    .tab.active-egreso {
+      background: rgba(181, 90, 90, 0.12);
+      border-color: var(--clay-red);
+      color: var(--clay-red);
+      box-shadow: inset 0 0 0 2px rgba(181, 90, 90, 0.12), var(--clay-puff-btn);
+    }
 
-  .form-area {
-    padding: 16px 20px;
-  }
+    .form-area {
+      padding: 16px 20px;
+    }
 
-  .form-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
+    .form-card {
+      background: var(--clay-surface);
+      border: 2px solid var(--clay-border);
+      border-radius: var(--clay-radius);
+      padding: 20px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      box-shadow: var(--clay-puff-btn);
+    }
 
-  .field label {
-    display: block;
-    font-size: 10px;
-    color: var(--text-muted);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    margin-bottom: 6px;
-  }
+    .field label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--clay-muted);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
 
-  .options-grid {
-    display: grid;
-    gap: 8px;
-  }
+    .options-grid {
+      display: grid;
+      gap: 8px;
+    }
+    .options-grid.cols-2 {
+      grid-template-columns: 1fr 1fr;
+    }
+    .options-grid.cols-3 {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
 
-  .options-grid.cols-2 { grid-template-columns: 1fr 1fr; }
-  .options-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .opt-btn {
+      padding: 12px 8px;
+      border-radius: 14px;
+      border: 2px solid var(--clay-border);
+      background: var(--clay-bg);
+      color: var(--clay-text);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+      box-shadow: var(--clay-puff-btn);
+      font-family: 'Inter', sans-serif;
+    }
+    .opt-btn:active {
+      box-shadow: var(--clay-puff-active);
+    }
 
-  .opt-btn {
-    padding: 10px 8px;
-    border-radius: 10px;
-    border: 1px solid var(--border);
-    background: var(--surface2);
-    color: var(--text-muted);
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    cursor: pointer;
-    transition: all 0.15s;
-    text-align: center;
-  }
+    .opt-btn.sel-ingreso {
+      background: rgba(75, 139, 107, 0.18);
+      border-color: var(--clay-green);
+      color: var(--clay-green);
+      box-shadow: inset 0 0 0 2px rgba(75, 139, 107, 0.10), var(--clay-puff-btn);
+    }
+    .opt-btn.sel-egreso {
+      background: rgba(181, 90, 90, 0.14);
+      border-color: var(--clay-red);
+      color: var(--clay-red);
+      box-shadow: inset 0 0 0 2px rgba(181, 90, 90, 0.10), var(--clay-puff-btn);
+    }
+    .opt-btn.sel-medio {
+      background: rgba(196, 155, 63, 0.18);
+      border-color: var(--clay-yellow);
+      color: #7a5f2a;
+      box-shadow: inset 0 0 0 2px rgba(196, 155, 63, 0.12), var(--clay-puff-btn);
+    }
 
-  .opt-btn.sel-ingreso {
-    background: rgba(74, 222, 128, 0.15);
-    border-color: var(--accent-green);
-    color: var(--accent-green);
-  }
+    .monto-input {
+      width: 100%;
+      background: var(--clay-bg);
+      border: 2px solid var(--clay-border);
+      border-radius: 16px;
+      padding: 16px 12px;
+      color: var(--clay-text);
+      font-size: 32px;
+      font-weight: 700;
+      text-align: center;
+      outline: none;
+      box-shadow: var(--clay-puff-inset);
+      transition: border-color 0.2s;
+      font-family: 'Inter', sans-serif;
+      letter-spacing: -0.02em;
+    }
+    .monto-input:focus {
+      border-color: var(--clay-yellow);
+    }
+    .monto-input::placeholder {
+      color: var(--clay-muted);
+      font-size: 18px;
+      font-weight: 400;
+    }
 
-  .opt-btn.sel-egreso {
-    background: rgba(248, 113, 113, 0.15);
-    border-color: var(--accent-red);
-    color: var(--accent-red);
-  }
+    .btn-agregar {
+      width: 100%;
+      padding: 16px;
+      border-radius: var(--clay-radius);
+      border: 2px solid var(--clay-border);
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: 0.05em;
+      box-shadow: var(--clay-puff-btn);
+      font-family: 'Inter', sans-serif;
+      background: var(--clay-bg);
+      color: var(--clay-text);
+    }
+    .btn-agregar:active {
+      transform: scale(0.97);
+      box-shadow: var(--clay-puff-active);
+    }
+    .btn-agregar.ingreso {
+      background: var(--clay-green);
+      color: #f5efe6;
+      border-color: #3a7054;
+    }
+    .btn-agregar.egreso {
+      background: var(--clay-red);
+      color: #f5efe6;
+      border-color: #9a4a4a;
+    }
 
-  .opt-btn.sel-medio {
-    background: rgba(251, 191, 36, 0.15);
-    border-color: var(--accent-yellow);
-    color: var(--accent-yellow);
-  }
+    .movimientos-area {
+      padding: 0 20px;
+    }
 
-  .monto-input {
-    width: 100%;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 14px 16px;
-    color: var(--text);
-    font-family: 'Fraunces', serif;
-    font-size: 28px;
-    font-weight: 600;
-    text-align: center;
-    outline: none;
-    transition: border-color 0.2s;
-  }
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--clay-muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      padding-top: 8px;
+    }
 
-  .monto-input:focus {
-    border-color: var(--accent-yellow);
-  }
+    .mov-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
 
-  .monto-input::placeholder {
-    color: var(--text-muted);
-    font-size: 16px;
-  }
+    .mov-item {
+      background: var(--clay-surface);
+      border: 2px solid var(--clay-border);
+      border-radius: var(--clay-radius);
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: var(--clay-puff-btn);
+    }
 
-  .btn-agregar {
-    width: 100%;
-    padding: 14px;
-    border-radius: var(--radius);
-    border: none;
-    font-family: 'DM Mono', monospace;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-    letter-spacing: 0.05em;
-  }
+    .mov-left {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
 
-  .btn-agregar.ingreso {
-    background: var(--accent-green);
-    color: #0a1f0f;
-  }
+    .mov-concepto {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--clay-text);
+    }
 
-  .btn-agregar.egreso {
-    background: var(--accent-red);
-    color: #1f0a0a;
-  }
+    .mov-meta {
+      font-size: 11px;
+      color: var(--clay-muted);
+      font-weight: 500;
+    }
 
-  .btn-agregar:active {
-    transform: scale(0.97);
-  }
+    .mov-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+    }
 
-  .movimientos-area {
-    padding: 0 20px;
-  }
+    .mov-monto {
+      font-size: 17px;
+      font-weight: 700;
+      font-family: 'Inter', sans-serif;
+      letter-spacing: -0.02em;
+    }
+    .mov-monto.verde {
+      color: var(--clay-green);
+    }
+    .mov-monto.rojo {
+      color: var(--clay-red);
+    }
 
-  .section-title {
-    font-size: 10px;
-    color: var(--text-muted);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    margin-bottom: 10px;
-    padding-top: 4px;
-  }
+    .mov-del {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--clay-muted);
+      cursor: pointer;
+      padding: 4px 10px;
+      border-radius: 12px;
+      border: 2px solid var(--clay-border);
+      background: var(--clay-bg);
+      box-shadow: var(--clay-puff-btn);
+      transition: all 0.1s;
+      font-family: 'Inter', sans-serif;
+    }
+    .mov-del:active {
+      box-shadow: var(--clay-puff-active);
+    }
 
-  .mov-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
+    .empty-state {
+      text-align: center;
+      padding: 36px 0;
+      color: var(--clay-muted);
+      font-size: 13px;
+      line-height: 1.8;
+      font-weight: 500;
+    }
 
-  .mov-item {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 10px 14px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
+    .divider {
+      height: 2px;
+      background: var(--clay-border);
+      margin: 18px 20px;
+      border-radius: 4px;
+      opacity: 0.5;
+    }
 
-  .mov-left {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
+    .logo {
+      height: 65px;
+      width: auto;
+      border-radius: 16px;
+      box-shadow: var(--clay-puff-btn);
+      background: var(--clay-surface);
+      padding: 4px;
+      border: 2px solid var(--clay-border);
+    }
 
-  .mov-concepto {
-    font-size: 12px;
-    color: var(--text);
-  }
+    .toast {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-80px);
+      background: var(--clay-surface);
+      border: 2px solid var(--clay-border);
+      border-radius: var(--clay-radius);
+      padding: 14px 28px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--clay-text);
+      transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+      z-index: 100;
+      white-space: nowrap;
+      box-shadow: var(--clay-puff-btn);
+      font-family: 'Inter', sans-serif;
+    }
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
 
-  .mov-meta {
-    font-size: 10px;
-    color: var(--text-muted);
-  }
+    input[type="number"]::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+    }
 
-  .mov-right {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 4px;
-  }
+    /* ===== VISTA PRECIOS ===== */
+    .precio-search {
+      padding: 16px 20px 8px;
+    }
+    .precio-search input {
+      width: 100%;
+      background: var(--clay-surface);
+      border: 2px solid var(--clay-border);
+      border-radius: var(--clay-radius);
+      padding: 14px 18px;
+      color: var(--clay-text);
+      font-size: 14px;
+      font-weight: 500;
+      outline: none;
+      box-shadow: var(--clay-puff-inset);
+      font-family: 'Inter', sans-serif;
+    }
+    .precio-search input:focus {
+      border-color: var(--clay-yellow);
+    }
+    .precio-meta {
+      padding: 0 20px 8px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--clay-muted);
+      letter-spacing: 0.04em;
+    }
+    .precio-list {
+      padding: 0 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .precio-item {
+      background: var(--clay-surface);
+      border: 2px solid var(--clay-border);
+      border-radius: var(--clay-radius);
+      padding: 14px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      box-shadow: var(--clay-puff-btn);
+    }
+    .precio-nombre {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--clay-text);
+      line-height: 1.3;
+      font-family: 'Inter', sans-serif;
+    }
+    .precio-codigo {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--clay-muted);
+      margin-top: 2px;
+    }
+    .precio-valor {
+      font-size: 18px;
+      font-weight: 700;
+      font-family: 'Inter', sans-serif;
+      color: var(--clay-green);
+      white-space: nowrap;
+      letter-spacing: -0.02em;
+    }
 
-  .mov-monto {
-    font-size: 15px;
-    font-weight: 600;
-    font-family: 'Fraunces', serif;
-  }
+    /* ===== NAV BAR ===== */
+    .nav-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
+      background: var(--clay-bg);
+      border-top: 2px solid var(--clay-border);
+      display: flex;
+      gap: 10px;
+      z-index: 10;
+      box-shadow: var(--clay-puff);
+    }
+    .nav-btn {
+      flex: 1;
+      padding: 14px 8px;
+      border-radius: var(--clay-radius);
+      border: 2px solid var(--clay-border);
+      background: var(--clay-surface);
+      color: var(--clay-muted);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.15s;
+      letter-spacing: 0.04em;
+      box-shadow: var(--clay-puff-btn);
+      font-family: 'Inter', sans-serif;
+    }
+    .nav-btn:active {
+      box-shadow: var(--clay-puff-active);
+    }
+    .nav-btn.active {
+      background: rgba(75, 139, 107, 0.15);
+      border-color: var(--clay-green);
+      color: var(--clay-green);
+      box-shadow: inset 0 0 0 2px rgba(75, 139, 107, 0.08), var(--clay-puff-btn);
+    }
 
-  .mov-monto.verde { color: var(--accent-green); }
-  .mov-monto.rojo { color: var(--accent-red); }
-
-  .mov-del {
-    font-size: 10px;
-    color: var(--text-muted);
-    cursor: pointer;
-    padding: 2px 6px;
-    border-radius: 4px;
-    border: 1px solid var(--border);
-    background: none;
-    font-family: 'DM Mono', monospace;
-  }
-
-  .empty-state {
-    text-align: center;
-    padding: 30px 0;
-    color: var(--text-muted);
-    font-size: 12px;
-    line-height: 1.8;
-  }
-
-  .toast {
-    position: fixed;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%) translateY(-80px);
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 10px 20px;
-    font-size: 12px;
-    color: var(--text);
-    transition: transform 0.3s;
-    z-index: 100;
-    white-space: nowrap;
-  }
-
-  .toast.show {
-    transform: translateX(-50%) translateY(0);
-  }
-
-  .divider {
-    height: 1px;
-    background: var(--border);
-    margin: 16px 20px;
-  }
-
-  .logo {
-  height: 65px;
-  width: auto;
-  border-radius: 12px;
-  }
-
-  input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
-</style>
+    .view {
+      display: none;
+    }
+    .view.active {
+      display: block;
+    }
+  </style>
 </head>
 <body>
 
-<header>
-  <div class="header-top">
-    <div style="display:flex; align-items:center; gap:12px;">
-      <img src="logo.png" alt="Logo Veterinaria Los Lapachos" class="logo">
-      <div>
-        <div class="app-title">Caja del Día</div>
-        <div class="app-subtitle">Veterinaria Los Lapachos</div>
-      </div>
-    </div>
-    <div class="fecha-badge" id="fechaBadge"></div>
-  </div>
-</header>
-
-<div class="view active" id="viewCaja">
-
-  <div class="resumen-strip">
-    <div class="resumen-item">
-      <div class="resumen-label">Ingresos</div>
-      <div class="resumen-valor verde" id="totalIngresos">$0</div>
-    </div>
-    <div class="resumen-item">
-      <div class="resumen-label">Egresos</div>
-      <div class="resumen-valor rojo" id="totalEgresos">$0</div>
-    </div>
-    <div class="resumen-item">
-      <div class="resumen-label">Neto</div>
-      <div class="resumen-valor amarillo" id="totalNeto">$0</div>
-    </div>
-  </div>
-
-  <div class="caja-inicial-bar">
-    <span class="caja-inicial-label">Caja inicial</span>
-    <input type="number" class="caja-inicial-input" id="cajaInicialInput" placeholder="$0" inputmode="numeric"
-      onblur="confirmarCajaInicial()" onkeydown="if(event.key==='Enter'){this.blur()}">
-    <span class="caja-final-label">En caja</span>
-    <span class="caja-final-valor" id="cajaFinalValor">—</span>
-  </div>
-
-  <div class="tabs">
-    <button class="tab active-ingreso" id="tabIngreso" onclick="setTipo('ingreso')">+ Ingreso</button>
-    <button class="tab" id="tabEgreso" onclick="setTipo('egreso')">− Egreso</button>
-  </div>
-
-  <div class="form-area">
-    <div class="form-card">
-
-      <div class="field" id="fieldConcepto">
-        <label>Concepto</label>
-        <div class="options-grid cols-2" id="conceptoOptions"></div>
-      </div>
-
-      <div class="field" id="fieldMedios">
-        <label>Medio de pago</label>
-        <div class="options-grid cols-3" id="mediosGrid">
-          <button class="opt-btn" id="medio-efectivo" onclick="setMedio('efectivo')">Efectivo</button>
-          <button class="opt-btn" id="medio-transferencia" onclick="setMedio('transferencia')">Transfer.</button>
-          <button class="opt-btn" id="medio-tarjeta" onclick="setMedio('tarjeta')">Tarjeta</button>
+  <header>
+    <div class="header-top">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <img src="logo.png" alt="Logo Veterinaria Los Lapachos" class="logo" />
+        <div>
+          <div class="app-title">Caja del Día</div>
+          <div class="app-subtitle">Veterinaria Los Lapachos</div>
         </div>
       </div>
+      <div class="fecha-badge" id="fechaBadge"></div>
+    </div>
+  </header>
 
-      <div class="field">
-        <label>Monto</label>
-        <input type="number" class="monto-input" id="montoInput" placeholder="$ 0" inputmode="numeric">
+  <!-- ===== VISTA CAJA ===== -->
+  <div class="view active" id="viewCaja">
+    <div class="resumen-strip">
+      <div class="resumen-item">
+        <div class="resumen-label">Ingresos</div>
+        <div class="resumen-valor verde" id="totalIngresos">$0</div>
       </div>
+      <div class="resumen-item">
+        <div class="resumen-label">Egresos</div>
+        <div class="resumen-valor rojo" id="totalEgresos">$0</div>
+      </div>
+      <div class="resumen-item">
+        <div class="resumen-label">Neto</div>
+        <div class="resumen-valor amarillo" id="totalNeto">$0</div>
+      </div>
+    </div>
 
-      <button class="btn-agregar ingreso" id="btnAgregar" onclick="agregar()">AGREGAR INGRESO</button>
+    <div class="caja-inicial-bar">
+      <span class="caja-inicial-label">Caja inicial</span>
+      <input type="number" class="caja-inicial-input" id="cajaInicialInput" placeholder="$0" inputmode="numeric"
+        onblur="confirmarCajaInicial()" onkeydown="if(event.key==='Enter'){this.blur()}" />
+      <span class="caja-final-label">En caja</span>
+      <span class="caja-final-valor" id="cajaFinalValor">—</span>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active-ingreso" id="tabIngreso" onclick="setTipo('ingreso')">+ Ingreso</button>
+      <button class="tab" id="tabEgreso" onclick="setTipo('egreso')">− Egreso</button>
+    </div>
+
+    <div class="form-area">
+      <div class="form-card">
+        <div class="field" id="fieldConcepto">
+          <label>Concepto</label>
+          <div class="options-grid cols-2" id="conceptoOptions"></div>
+        </div>
+
+        <div class="field" id="fieldMedios">
+          <label>Medio de pago</label>
+          <div class="options-grid cols-3" id="mediosGrid">
+            <button class="opt-btn" id="medio-efectivo" onclick="setMedio('efectivo')">Efectivo</button>
+            <button class="opt-btn" id="medio-transferencia" onclick="setMedio('transferencia')">Transfer.</button>
+            <button class="opt-btn" id="medio-tarjeta" onclick="setMedio('tarjeta')">Tarjeta</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Monto</label>
+          <input type="number" class="monto-input" id="montoInput" placeholder="$ 0" inputmode="numeric" />
+        </div>
+
+        <button class="btn-agregar ingreso" id="btnAgregar" onclick="agregar()">AGREGAR INGRESO</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="movimientos-area">
+      <div class="section-title">Movimientos de hoy</div>
+      <div class="mov-list" id="movList"></div>
     </div>
   </div>
 
-  <div class="divider"></div>
-
-  <div class="movimientos-area">
-    <div class="section-title">Movimientos de hoy</div>
-    <div class="mov-list" id="movList"></div>
+  <!-- ===== VISTA PRECIOS ===== -->
+  <div class="view" id="viewPrecios">
+    <div class="precio-search">
+      <input type="text" id="precioBuscar" placeholder="Buscar por nombre o código..." oninput="renderPrecios()" />
+    </div>
+    <div class="precio-meta" id="precioMeta">Cargando...</div>
+    <div class="precio-list" id="precioList"></div>
   </div>
 
-</div>
-
-<div class="view" id="viewPrecios">
-  <div class="precio-search">
-    <input type="text" id="precioBuscar" placeholder="Buscar por nombre o código..." oninput="renderPrecios()">
+  <!-- ===== NAV ===== -->
+  <div class="nav-bar">
+    <button class="nav-btn active" id="navCaja" onclick="setVista('caja')">💰 Caja</button>
+    <button class="nav-btn" id="navPrecios" onclick="setVista('precios')">📦 Precios</button>
   </div>
-  <div class="precio-meta" id="precioMeta">Cargando...</div>
-  <div class="precio-list" id="precioList"></div>
-</div>
 
-<div class="nav-bar">
-  <button class="nav-btn active" id="navCaja" onclick="setVista('caja')">💰 Caja</button>
-  <button class="nav-btn" id="navPrecios" onclick="setVista('precios')">📦 Precios</button>
-</div>
+  <div class="toast" id="toast"></div>
 
-<div class="toast" id="toast"></div>
+  <script>
+    // ====== CONFIG ======
+    const SHEET_URL = 'https://script.google.com/macros/s/AKfycbxPn9ZdpBpqIWVtTve-zhtyfX2pr11qx5oSwYP4iTQsSncDGRqPUznGSJLd_-o201g/exec';
+    const POLL_INTERVAL = 10000;
 
-<script>
-// ====== CONFIG ======
-const SHEET_URL = 'https://script.google.com/macros/s/AKfycbxPn9ZdpBpqIWVtTve-zhtyfX2pr11qx5oSwYP4iTQsSncDGRqPUznGSJLd_-o201g/exec';
-const POLL_INTERVAL = 10000;
+    const CONCEPTOS = {
+      ingreso: ['Venta producto', 'Clínica'],
+      egreso: ['Sueldo', 'Retiro', 'Otro']
+    };
 
-const CONCEPTOS = {
-  ingreso: ['Venta producto', 'Clínica'],
-  egreso: ['Sueldo', 'Retiro', 'Otro']
-};
+    // ====== STATE ======
+    let tipo = 'ingreso';
+    let concepto = '';
+    let medio = '';
+    let pollTimer = null;
+    let limpiando = false;
 
-// ====== STATE ======
-let tipo = 'ingreso';
-let concepto = '';
-let medio = '';
-let pollTimer = null;
-let limpiando = false; // evita que el polling retraiga datos mientras se limpia
+    // ====== HELPERS ======
+    const hoy = () => {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    };
 
-// ====== HELPERS ======
-const hoy = () => {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-};
+    function getMovimientos() {
+      return JSON.parse(localStorage.getItem('movimientos') || '[]');
+    }
 
-function getMovimientos() {
-  return JSON.parse(localStorage.getItem('movimientos') || '[]');
-}
-function saveMovimientos(movs) {
-  localStorage.setItem('movimientos', JSON.stringify(movs));
-}
-function formatPeso(n) {
-  return '$' + Number(n).toLocaleString('es-AR');
-}
-function formatFecha(iso) {
-  const [y, m, d] = iso.split('-');
-  return `${d}/${m}/${y}`;
-}
-function horaActual() {
-  const now = new Date();
-  return String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
-}
+    function saveMovimientos(movs) {
+      localStorage.setItem('movimientos', JSON.stringify(movs));
+    }
 
-// ====== CAJA INICIAL ======
-function getCajaInicialLocal() {
-  const data = JSON.parse(localStorage.getItem('cajaInicial') || '{}');
-  if (data.fecha !== hoy()) return 0;
-  return data.monto || 0;
-}
-function saveCajaInicialLocal(monto) {
-  localStorage.setItem('cajaInicial', JSON.stringify({ fecha: hoy(), monto }));
-}
+    function formatPeso(n) {
+      return '$' + Number(n).toLocaleString('es-AR');
+    }
 
-function confirmarCajaInicial() {
-  const input = document.getElementById('cajaInicialInput');
-  const monto = parseFloat(input.value) || 0;
-  if (!monto) return;
-  input.disabled = true;
-  saveCajaInicialLocal(monto);
-  recalcularCajaFinal();
-  sheetPost({ action: 'guardarCajaInicial', fecha: hoy(), monto });
-}
+    function formatFecha(iso) {
+      const [y, m, d] = iso.split('-');
+      return `${d}/${m}/${y}`;
+    }
 
-function recalcularCajaFinal() {
-  const cajaInicial = getCajaInicialLocal();
-  const el = document.getElementById('cajaFinalValor');
-  if (!cajaInicial) { el.textContent = '—'; return; }
-  const movs = getMovimientos().filter(m => m.fecha === hoy());
-  const ingEfectivo = movs.filter(m => m.tipo === 'ingreso' && m.medio === 'efectivo').reduce((s, m) => s + m.monto, 0);
-  const egEfectivo  = movs.filter(m => m.tipo === 'egreso'  && m.medio === 'efectivo').reduce((s, m) => s + m.monto, 0);
-  el.textContent = formatPeso(cajaInicial + ingEfectivo - egEfectivo);
-}
+    function horaActual() {
+      const now = new Date();
+      return String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+    }
 
-// ====== SHEET SYNC ======
-async function sheetPost(data) {
-  try {
-    await fetch(SHEET_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-  } catch(e) {
-    console.warn('sheetPost error:', e);
-  }
-}
+    // ====== CAJA INICIAL ======
+    function getCajaInicialLocal() {
+      const data = JSON.parse(localStorage.getItem('cajaInicial') || '{}');
+      if (data.fecha !== hoy()) return 0;
+      return data.monto || 0;
+    }
 
-async function sincronizarDesdeSheet() {
-  if (limpiando) return;
-  try {
-    const res = await fetch(SHEET_URL + '?t=' + Date.now());
-    const data = await res.json();
-    if (!data.ok) return;
+    function saveCajaInicialLocal(monto) {
+      localStorage.setItem('cajaInicial', JSON.stringify({ fecha: hoy(), monto }));
+    }
 
-    let locales = getMovimientos();
-    const idsLocales = new Set(locales.map(m => String(m.id)));
-    let hubocambios = false;
+    function confirmarCajaInicial() {
+      const input = document.getElementById('cajaInicialInput');
+      const monto = parseFloat(input.value) || 0;
+      if (!monto) return;
+      input.disabled = true;
+      saveCajaInicialLocal(monto);
+      recalcularCajaFinal();
+      sheetPost({ action: 'guardarCajaInicial', fecha: hoy(), monto });
+    }
 
-    // 1. Aplicar borrados explícitos (borrado individual desde otro dispositivo)
-    if (data.borrados && data.borrados.length > 0) {
-      const idsBorrados = new Set(data.borrados.map(String));
-      const filtrados = locales.filter(m => !idsBorrados.has(String(m.id)));
-      if (filtrados.length !== locales.length) {
-        locales = filtrados;
-        saveMovimientos(locales);
-        hubocambios = true;
+    function recalcularCajaFinal() {
+      const cajaInicial = getCajaInicialLocal();
+      const el = document.getElementById('cajaFinalValor');
+      if (!cajaInicial) { el.textContent = '—'; return; }
+      const movs = getMovimientos().filter(m => m.fecha === hoy());
+      const ingEfectivo = movs.filter(m => m.tipo === 'ingreso' && m.medio === 'efectivo').reduce((s, m) => s + m.monto, 0);
+      const egEfectivo = movs.filter(m => m.tipo === 'egreso' && m.medio === 'efectivo').reduce((s, m) => s + m.monto, 0);
+      el.textContent = formatPeso(cajaInicial + ingEfectivo - egEfectivo);
+    }
+
+    // ====== SHEET SYNC ======
+    async function sheetPost(data) {
+      try {
+        await fetch(SHEET_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+      } catch (e) {
+        console.warn('sheetPost error:', e);
       }
     }
 
-    // 2. Agregar nuevos del Sheet — nunca borrar locales por ausencia en Sheet
-    const nuevos = data.movimientos.filter(m => !idsLocales.has(String(m.id)));
-    if (nuevos.length > 0) {
-      const merged = [...locales, ...nuevos];
-      merged.sort((a, b) => (a.fecha + a.hora).localeCompare(b.fecha + b.hora));
-      saveMovimientos(merged);
-      hubocambios = true;
+    async function sincronizarDesdeSheet() {
+      if (limpiando) return;
+      try {
+        const res = await fetch(SHEET_URL + '?t=' + Date.now());
+        const data = await res.json();
+        if (!data.ok) return;
+
+        let locales = getMovimientos();
+        const idsLocales = new Set(locales.map(m => String(m.id)));
+        let hubocambios = false;
+
+        if (data.borrados && data.borrados.length > 0) {
+          const idsBorrados = new Set(data.borrados.map(String));
+          const filtrados = locales.filter(m => !idsBorrados.has(String(m.id)));
+          if (filtrados.length !== locales.length) {
+            locales = filtrados;
+            saveMovimientos(locales);
+            hubocambios = true;
+          }
+        }
+
+        const nuevos = data.movimientos.filter(m => !idsLocales.has(String(m.id)));
+        if (nuevos.length > 0) {
+          const merged = [...locales, ...nuevos];
+          merged.sort((a, b) => (a.fecha + a.hora).localeCompare(b.fecha + b.hora));
+          saveMovimientos(merged);
+          hubocambios = true;
+        }
+
+        if (hubocambios) {
+          renderMovimientos();
+          renderResumen();
+        }
+
+        const cajaEnSheet = data.cajaInicial && data.cajaInicial[hoy()];
+        const cajaLocal = getCajaInicialLocal();
+        if (cajaEnSheet && !cajaLocal) {
+          saveCajaInicialLocal(cajaEnSheet);
+          const input = document.getElementById('cajaInicialInput');
+          input.value = cajaEnSheet;
+          input.disabled = true;
+          recalcularCajaFinal();
+        } else if (!cajaEnSheet && cajaLocal) {
+          localStorage.removeItem('cajaInicial');
+          const input = document.getElementById('cajaInicialInput');
+          input.value = '';
+          input.disabled = false;
+          document.getElementById('cajaFinalValor').textContent = '—';
+        }
+      } catch (e) { /* silencioso */ }
     }
 
-    if (hubocambios) {
+    function iniciarPolling() {
+      if (pollTimer) clearInterval(pollTimer);
+      pollTimer = setInterval(sincronizarDesdeSheet, POLL_INTERVAL);
+    }
+
+    // ====== UI ======
+    function setTipo(t) {
+      tipo = t;
+      concepto = '';
+      medio = '';
+      document.getElementById('tabIngreso').className = 'tab' + (t === 'ingreso' ? ' active-ingreso' : '');
+      document.getElementById('tabEgreso').className = 'tab' + (t === 'egreso' ? ' active-egreso' : '');
+      document.getElementById('btnAgregar').className = 'btn-agregar ' + t;
+      document.getElementById('btnAgregar').textContent = t === 'ingreso' ? 'AGREGAR INGRESO' : 'AGREGAR EGRESO';
+      const tarjeta = document.getElementById('medio-tarjeta');
+      if (tarjeta) tarjeta.style.display = t === 'ingreso' ? '' : 'none';
+      const grid = document.getElementById('mediosGrid');
+      if (grid) grid.className = 'options-grid cols-' + (t === 'ingreso' ? '3' : '2');
+      renderConceptos();
+      clearMedios();
+    }
+
+    function renderConceptos() {
+      const opts = CONCEPTOS[tipo];
+      const el = document.getElementById('conceptoOptions');
+      el.className = 'options-grid cols-' + (opts.length <= 2 ? '2' : '3');
+      el.innerHTML = opts.map(c =>
+        `<button class="opt-btn" id="con-${c.replace(/ /g, '_')}" onclick="setConcepto('${c}')">${c}</button>`
+      ).join('');
+    }
+
+    function setConcepto(c) {
+      concepto = c;
+      CONCEPTOS[tipo].forEach(x => {
+        const el = document.getElementById('con-' + x.replace(/ /g, '_'));
+        if (el) el.className = 'opt-btn' + (x === c ? (tipo === 'ingreso' ? ' sel-ingreso' : ' sel-egreso') : '');
+      });
+    }
+
+    function setMedio(m) {
+      medio = m;
+      ['efectivo', 'transferencia', 'tarjeta'].forEach(x => {
+        const el = document.getElementById('medio-' + x);
+        if (el) el.className = 'opt-btn' + (x === m ? ' sel-medio' : '');
+      });
+    }
+
+    function clearMedios() {
+      ['efectivo', 'transferencia', 'tarjeta'].forEach(m => {
+        const el = document.getElementById('medio-' + m);
+        if (el) el.className = 'opt-btn';
+      });
+      medio = '';
+    }
+
+    async function agregar() {
+      const monto = parseFloat(document.getElementById('montoInput').value);
+      if (!concepto) { showToast('Elegí un concepto'); return; }
+      if (!medio) { showToast('Elegí el medio de pago'); return; }
+      if (!monto || monto <= 0) { showToast('Ingresá un monto válido'); return; }
+
+      const mov = { id: Date.now(), fecha: hoy(), hora: horaActual(), tipo, concepto, medio, monto };
+      const movs = getMovimientos();
+      movs.push(mov);
+      saveMovimientos(movs);
+
+      document.getElementById('montoInput').value = '';
+      concepto = '';
+      medio = '';
+      renderConceptos();
+      clearMedios();
       renderMovimientos();
       renderResumen();
+      showToast('✓ Registrado');
+
+      await sheetPost({ action: 'agregar', ...mov });
+      await sincronizarDesdeSheet();
     }
 
-    // 3. Caja inicial
-    const cajaEnSheet = data.cajaInicial && data.cajaInicial[hoy()];
-    const cajaLocal = getCajaInicialLocal();
-    if (cajaEnSheet && !cajaLocal) {
-      saveCajaInicialLocal(cajaEnSheet);
-      const input = document.getElementById('cajaInicialInput');
-      input.value = cajaEnSheet;
-      input.disabled = true;
-      recalcularCajaFinal();
-    } else if (!cajaEnSheet && cajaLocal) {
+    async function eliminar(id) {
+      const movs = getMovimientos();
+      const mov = movs.find(m => m.id === id);
+      saveMovimientos(movs.filter(m => m.id !== id));
+      renderMovimientos();
+      renderResumen();
+      if (mov) await sheetPost({ action: 'eliminar', ...mov });
+    }
+
+    function resetearUI() {
+      saveMovimientos([]);
       localStorage.removeItem('cajaInicial');
       const input = document.getElementById('cajaInicialInput');
       input.value = '';
       input.disabled = false;
       document.getElementById('cajaFinalValor').textContent = '—';
+      renderMovimientos();
+      renderResumen();
     }
-  } catch(e) { /* silencioso */ }
-}
 
-function iniciarPolling() {
-  if (pollTimer) clearInterval(pollTimer);
-  pollTimer = setInterval(sincronizarDesdeSheet, POLL_INTERVAL);
-}
-
-// ====== UI ======
-function setTipo(t) {
-  tipo = t; concepto = ''; medio = '';
-  document.getElementById('tabIngreso').className = 'tab' + (t === 'ingreso' ? ' active-ingreso' : '');
-  document.getElementById('tabEgreso').className  = 'tab' + (t === 'egreso'  ? ' active-egreso'  : '');
-  document.getElementById('btnAgregar').className = 'btn-agregar ' + t;
-  document.getElementById('btnAgregar').textContent = t === 'ingreso' ? 'AGREGAR INGRESO' : 'AGREGAR EGRESO';
-  const tarjeta = document.getElementById('medio-tarjeta');
-  if (tarjeta) tarjeta.style.display = t === 'ingreso' ? '' : 'none';
-  const grid = document.getElementById('mediosGrid');
-  if (grid) grid.className = 'options-grid cols-' + (t === 'ingreso' ? '3' : '2');
-  renderConceptos();
-  clearMedios();
-}
-
-function renderConceptos() {
-  const opts = CONCEPTOS[tipo];
-  const el = document.getElementById('conceptoOptions');
-  el.className = 'options-grid cols-' + (opts.length <= 2 ? '2' : '3');
-  el.innerHTML = opts.map(c =>
-    `<button class="opt-btn" id="con-${c.replace(/ /g,'_')}" onclick="setConcepto('${c}')">${c}</button>`
-  ).join('');
-}
-
-function setConcepto(c) {
-  concepto = c;
-  CONCEPTOS[tipo].forEach(x => {
-    const el = document.getElementById('con-' + x.replace(/ /g,'_'));
-    if (el) el.className = 'opt-btn' + (x === c ? (tipo === 'ingreso' ? ' sel-ingreso' : ' sel-egreso') : '');
-  });
-}
-
-function setMedio(m) {
-  medio = m;
-  ['efectivo','transferencia','tarjeta'].forEach(x => {
-    const el = document.getElementById('medio-' + x);
-    if (el) el.className = 'opt-btn' + (x === m ? ' sel-medio' : '');
-  });
-}
-
-function clearMedios() {
-  ['efectivo','transferencia','tarjeta'].forEach(m => {
-    const el = document.getElementById('medio-' + m);
-    if (el) el.className = 'opt-btn';
-  });
-  medio = '';
-}
-
-async function agregar() {
-  const monto = parseFloat(document.getElementById('montoInput').value);
-  if (!concepto) { showToast('Elegí un concepto'); return; }
-  if (!medio)    { showToast('Elegí el medio de pago'); return; }
-  if (!monto || monto <= 0) { showToast('Ingresá un monto válido'); return; }
-
-  const mov = { id: Date.now(), fecha: hoy(), hora: horaActual(), tipo, concepto, medio, monto };
-  const movs = getMovimientos();
-  movs.push(mov);
-  saveMovimientos(movs);
-
-  document.getElementById('montoInput').value = '';
-  concepto = ''; medio = '';
-  renderConceptos(); clearMedios();
-  renderMovimientos(); renderResumen();
-  showToast('✓ Registrado');
-
-  await sheetPost({ action: 'agregar', ...mov });
-  await sincronizarDesdeSheet();
-}
-
-async function eliminar(id) {
-  const movs = getMovimientos();
-  const mov = movs.find(m => m.id === id);
-  saveMovimientos(movs.filter(m => m.id !== id));
-  renderMovimientos(); renderResumen();
-  if (mov) await sheetPost({ action: 'eliminar', ...mov });
-}
-
-function resetearUI() {
-  saveMovimientos([]);
-  localStorage.removeItem('cajaInicial');
-  const input = document.getElementById('cajaInicialInput');
-  input.value = '';
-  input.disabled = false;
-  document.getElementById('cajaFinalValor').textContent = '—';
-  renderMovimientos();
-  renderResumen();
-}
-
-function renderMovimientos() {
-  const movs = getMovimientos().filter(m => m.fecha === hoy()).reverse();
-  const el = document.getElementById('movList');
-  if (!movs.length) {
-    el.innerHTML = '<div class="empty-state">Sin movimientos hoy.<br>Empezá cargando el primero.</div>';
-    return;
-  }
-  el.innerHTML = movs.map(m => `
-    <div class="mov-item">
-      <div class="mov-left">
-        <div class="mov-concepto">${m.concepto}</div>
-        <div class="mov-meta">${m.hora}${m.medio ? ' · ' + m.medio : ''}</div>
-      </div>
-      <div class="mov-right">
-        <div class="mov-monto ${m.tipo === 'ingreso' ? 'verde' : 'rojo'}">
-          ${m.tipo === 'ingreso' ? '+' : '−'}${formatPeso(m.monto)}
+    function renderMovimientos() {
+      const movs = getMovimientos().filter(m => m.fecha === hoy()).reverse();
+      const el = document.getElementById('movList');
+      if (!movs.length) {
+        el.innerHTML = '<div class="empty-state">Sin movimientos hoy.<br />Empezá cargando el primero.</div>';
+        return;
+      }
+      el.innerHTML = movs.map(m => `
+        <div class="mov-item">
+          <div class="mov-left">
+            <div class="mov-concepto">${m.concepto}</div>
+            <div class="mov-meta">${m.hora}${m.medio ? ' · ' + m.medio : ''}</div>
+          </div>
+          <div class="mov-right">
+            <div class="mov-monto ${m.tipo === 'ingreso' ? 'verde' : 'rojo'}">
+              ${m.tipo === 'ingreso' ? '+' : '−'}${formatPeso(m.monto)}
+            </div>
+            <button class="mov-del" onclick="eliminar(${m.id})">borrar</button>
+          </div>
         </div>
-        <button class="mov-del" onclick="eliminar(${m.id})">borrar</button>
-      </div>
-    </div>
-  `).join('');
-}
-
-function renderResumen() {
-  const movs = getMovimientos().filter(m => m.fecha === hoy());
-  const ingresos = movs.filter(m => m.tipo === 'ingreso').reduce((s, m) => s + m.monto, 0);
-  const egresos  = movs.filter(m => m.tipo === 'egreso').reduce((s, m) => s + m.monto, 0);
-  document.getElementById('totalIngresos').textContent = formatPeso(ingresos);
-  document.getElementById('totalEgresos').textContent  = formatPeso(egresos);
-  document.getElementById('totalNeto').textContent     = formatPeso(ingresos - egresos);
-  recalcularCajaFinal();
-}
-
-function renderFecha() {
-  const now = new Date();
-  const dias  = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
-  const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-  document.getElementById('fechaBadge').innerHTML =
-    `${dias[now.getDay()]} ${now.getDate()} ${meses[now.getMonth()]}<br>${now.getFullYear()}`;
-}
-
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
-}
-
-// ====== NAVEGACIÓN ======
-function setVista(v) {
-  document.getElementById('viewCaja').className   = 'view' + (v === 'caja'    ? ' active' : '');
-  document.getElementById('viewPrecios').className = 'view' + (v === 'precios' ? ' active' : '');
-  document.getElementById('navCaja').className    = 'nav-btn' + (v === 'caja'    ? ' active' : '');
-  document.getElementById('navPrecios').className = 'nav-btn' + (v === 'precios' ? ' active' : '');
-  if (v === 'precios') cargarPrecios();
-}
-
-// ====== PRECIOS DE PRODUCTOS ======
-const PRECIOS_CACHE_KEY = 'precios_cache';
-const PRECIOS_CACHE_MS  = 5 * 60 * 1000; // 5 min
-
-function getPreciosCache() {
-  try { return JSON.parse(localStorage.getItem(PRECIOS_CACHE_KEY) || 'null'); }
-  catch(e) { return null; }
-}
-function savePreciosCache(articulos) {
-  localStorage.setItem(PRECIOS_CACHE_KEY, JSON.stringify({ ts: Date.now(), articulos }));
-}
-
-async function cargarPrecios(force) {
-  const cache = getPreciosCache();
-  if (cache && !force && (Date.now() - cache.ts) < PRECIOS_CACHE_MS) {
-    renderPrecios();
-    return;
-  }
-  document.getElementById('precioMeta').textContent = 'Actualizando...';
-  try {
-    const res = await fetch(SHEET_URL + '?tipo=precios&t=' + Date.now());
-    const data = await res.json();
-    if (data.ok) {
-      savePreciosCache(data.articulos);
+      `).join('');
     }
-  } catch(e) { /* si falla, se usa lo que haya en cache */ }
-  renderPrecios();
-}
 
-function renderPrecios() {
-  const cache = getPreciosCache();
-  const meta = document.getElementById('precioMeta');
-  const list = document.getElementById('precioList');
+    function renderResumen() {
+      const movs = getMovimientos().filter(m => m.fecha === hoy());
+      const ingresos = movs.filter(m => m.tipo === 'ingreso').reduce((s, m) => s + m.monto, 0);
+      const egresos = movs.filter(m => m.tipo === 'egreso').reduce((s, m) => s + m.monto, 0);
+      document.getElementById('totalIngresos').textContent = formatPeso(ingresos);
+      document.getElementById('totalEgresos').textContent = formatPeso(egresos);
+      document.getElementById('totalNeto').textContent = formatPeso(ingresos - egresos);
+      recalcularCajaFinal();
+    }
 
-  if (!cache || !cache.articulos || !cache.articulos.length) {
-    meta.textContent = 'Sin datos todavía';
-    list.innerHTML = '<div class="empty-state">No hay precios cargados aún.</div>';
-    return;
-  }
+    function renderFecha() {
+      const now = new Date();
+      const dias = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+      const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+      document.getElementById('fechaBadge').innerHTML =
+        `${dias[now.getDay()]} ${now.getDate()} ${meses[now.getMonth()]}<br />${now.getFullYear()}`;
+    }
 
-  const actualizado = new Date(cache.ts);
-  meta.textContent = 'Actualizado ' + actualizado.toLocaleDateString('es-AR') + ' ' +
-    String(actualizado.getHours()).padStart(2,'0') + ':' + String(actualizado.getMinutes()).padStart(2,'0');
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2500);
+    }
 
-  const q = (document.getElementById('precioBuscar').value || '').trim().toLowerCase();
-  let items = cache.articulos;
-  if (q) {
-    items = items.filter(a =>
-      (a.nombre || '').toLowerCase().includes(q) ||
-      (a.codigo || '').toLowerCase().includes(q)
-    );
-  }
-  items = items.slice(0, 100); // límite de render, la búsqueda ya filtra
+    // ====== NAVEGACIÓN ======
+    function setVista(v) {
+      document.getElementById('viewCaja').className = 'view' + (v === 'caja' ? ' active' : '');
+      document.getElementById('viewPrecios').className = 'view' + (v === 'precios' ? ' active' : '');
+      document.getElementById('navCaja').className = 'nav-btn' + (v === 'caja' ? ' active' : '');
+      document.getElementById('navPrecios').className = 'nav-btn' + (v === 'precios' ? ' active' : '');
+      if (v === 'precios') cargarPrecios();
+    }
 
-  if (!items.length) {
-    list.innerHTML = '<div class="empty-state">Sin resultados.</div>';
-    return;
-  }
+    // ====== PRECIOS ======
+    const PRECIOS_CACHE_KEY = 'precios_cache';
+    const PRECIOS_CACHE_MS = 5 * 60 * 1000;
 
-  list.innerHTML = items.map(a => `
-    <div class="precio-item">
-      <div>
-        <div class="precio-nombre">${a.nombre}</div>
-        ${a.codigo ? `<div class="precio-codigo">${a.codigo}</div>` : ''}
-      </div>
-      <div class="precio-valor">${formatPeso(a.precio)}</div>
-    </div>
-  `).join('');
-}
+    function getPreciosCache() {
+      try { return JSON.parse(localStorage.getItem(PRECIOS_CACHE_KEY) || 'null'); } catch (e) { return null; }
+    }
 
-// ====== BOOTSTRAP ======
-renderFecha();
-renderConceptos();
-setTipo('ingreso');
-const cajaGuardada = getCajaInicialLocal();
-if (cajaGuardada > 0) {
-  const input = document.getElementById('cajaInicialInput');
-  input.value = cajaGuardada;
-  input.disabled = true;
-}
-sincronizarDesdeSheet().then(() => {
-  renderMovimientos();
-  renderResumen();
-});
-iniciarPolling();
-</script>
+    function savePreciosCache(articulos) {
+      localStorage.setItem(PRECIOS_CACHE_KEY, JSON.stringify({ ts: Date.now(), articulos }));
+    }
+
+    async function cargarPrecios(force) {
+      const cache = getPreciosCache();
+      if (cache && !force && (Date.now() - cache.ts) < PRECIOS_CACHE_MS) {
+        renderPrecios();
+        return;
+      }
+      document.getElementById('precioMeta').textContent = 'Actualizando...';
+      try {
+        const res = await fetch(SHEET_URL + '?tipo=precios&t=' + Date.now());
+        const data = await res.json();
+        if (data.ok) {
+          savePreciosCache(data.articulos);
+        }
+      } catch (e) { /* fallback a cache */ }
+      renderPrecios();
+    }
+
+    function renderPrecios() {
+      const cache = getPreciosCache();
+      const meta = document.getElementById('precioMeta');
+      const list = document.getElementById('precioList');
+
+      if (!cache || !cache.articulos || !cache.articulos.length) {
+        meta.textContent = 'Sin datos todavía';
+        list.innerHTML = '<div class="empty-state">No hay precios cargados aún.</div>';
+        return;
+      }
+
+      const actualizado = new Date(cache.ts);
+      meta.textContent = 'Actualizado ' + actualizado.toLocaleDateString('es-AR') + ' ' +
+        String(actualizado.getHours()).padStart(2, '0') + ':' + String(actualizado.getMinutes()).padStart(2, '0');
+
+      const q = (document.getElementById('precioBuscar').value || '').trim().toLowerCase();
+      let items = cache.articulos;
+      if (q) {
+        items = items.filter(a =>
+          (a.nombre || '').toLowerCase().includes(q) ||
+          (a.codigo || '').toLowerCase().includes(q)
+        );
+      }
+      items = items.slice(0, 100);
+
+      if (!items.length) {
+        list.innerHTML = '<div class="empty-state">Sin resultados.</div>';
+        return;
+      }
+
+      list.innerHTML = items.map(a => `
+        <div class="precio-item">
+          <div>
+            <div class="precio-nombre">${a.nombre}</div>
+            ${a.codigo ? `<div class="precio-codigo">${a.codigo}</div>` : ''}
+          </div>
+          <div class="precio-valor">${formatPeso(a.precio)}</div>
+        </div>
+      `).join('');
+    }
+
+    // ====== BOOTSTRAP ======
+    renderFecha();
+    renderConceptos();
+    setTipo('ingreso');
+    const cajaGuardada = getCajaInicialLocal();
+    if (cajaGuardada > 0) {
+      const input = document.getElementById('cajaInicialInput');
+      input.value = cajaGuardada;
+      input.disabled = true;
+    }
+    sincronizarDesdeSheet().then(() => {
+      renderMovimientos();
+      renderResumen();
+    });
+    iniciarPolling();
+  </script>
 </body>
 </html>
