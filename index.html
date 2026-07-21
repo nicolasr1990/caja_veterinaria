@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <title>Caja del Día</title>
+  <link rel="manifest" href="./manifest.json" />
+  <meta name="theme-color" content="#8b1538" />
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,600;1,300&family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet" />
   <style>
     /* ===== ROOTS CLAYMORE ===== */
@@ -518,6 +520,25 @@
     /* ===== VISTA PRECIOS ===== */
     .precio-search {
       padding: 16px 20px 8px;
+      display: flex;
+      gap: 8px;
+    }
+    .precio-search input {
+      flex: 1;
+    }
+    .precio-refresh-btn {
+      flex-shrink: 0;
+      width: 46px;
+      background: var(--clay-surface);
+      border: 2px solid var(--clay-border);
+      border-radius: var(--clay-radius);
+      color: var(--clay-text);
+      font-size: 18px;
+      cursor: pointer;
+      box-shadow: var(--clay-puff-btn);
+    }
+    .precio-refresh-btn:active {
+      box-shadow: var(--clay-puff-active);
     }
     .precio-search input {
       width: 100%;
@@ -732,6 +753,7 @@
   <div class="view" id="viewPrecios">
     <div class="precio-search">
       <input type="text" id="precioBuscar" placeholder="Buscar por nombre o código..." oninput="renderPrecios()" />
+      <button class="precio-refresh-btn" onclick="cargarPrecios(true)" title="Actualizar precios">⟳</button>
     </div>
     <div class="precio-meta" id="precioMeta">Cargando...</div>
     <div class="precio-list" id="precioList"></div>
@@ -1135,6 +1157,15 @@
       renderResumen();
     });
     iniciarPolling();
+
+    // ====== PWA: registrar service worker para uso offline ======
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(err => {
+          console.error('Error registrando service worker:', err);
+        });
+      });
+    }
   </script>
 </body>
 </html>
