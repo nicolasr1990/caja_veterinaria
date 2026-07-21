@@ -1,0 +1,24 @@
+{
+  "name": "Caja - Veterinaria Los Lapachos",
+  "short_name": "Caja Lapachos",
+  "description": "Caja del día y precios - Veterinaria Los Lapachos",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#faf5f0",
+  "theme_color": "#8b1538",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
